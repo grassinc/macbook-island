@@ -23,6 +23,14 @@
 - `com.apple.screencapture type` is UNSET => defaults to png.
 - Code must handle absent keys, not assume they exist.
 
+## Toolchain gotchas (verified)
+- `softwareupdate` only lists the CLT package while
+  `/tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress` exists.
+  Dismissing the install dialog deletes it, so a later `softwareupdate --install`
+  fails with "No such update". Arm the flag and install in one root shell.
+- CLT has NO XCTest and NO swift-testing. Only the private XCTestSupport stub
+  exists. A test framework requires full Xcode; we use a local harness instead.
+
 ## Open questions
 - Does stopping OSDUIHelper require anything beyond killing it on macOS 26? Verify.
 - Confirm ad-hoc signed bundle can hold a stable TCC identity across rebuilds.

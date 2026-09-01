@@ -23,10 +23,18 @@ public struct Activity: Sendable, Equatable, Identifiable {
     public let id: String
     public let priority: ActivityPriority
     public let startedAt: Date
+    /// When this stops being shown. `nil` means it stays until retracted.
+    public let expiresAt: Date?
 
-    public init(id: String, priority: ActivityPriority, startedAt: Date) {
+    public init(id: String, priority: ActivityPriority, startedAt: Date, expiresAt: Date? = nil) {
         self.id = id
         self.priority = priority
         self.startedAt = startedAt
+        self.expiresAt = expiresAt
+    }
+
+    public func isLive(at now: Date) -> Bool {
+        guard let expiresAt else { return true }
+        return now < expiresAt
     }
 }
