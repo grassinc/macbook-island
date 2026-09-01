@@ -212,7 +212,11 @@ struct PillRootView: View {
                      redacted: privacy.isScreenSharing,
                      onSignIn: { model.connectEmail?() })
 
-            secondary
+            // Neither sketch has a calendar prompt, timer chips or a
+            // permission nag in it. While something is playing the panel is
+            // the player, the shelf and the inbox — nothing else earns the
+            // space. They come back the moment the music stops.
+            if nowPlaying.playback == nil { secondary }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .padding(11)
@@ -247,7 +251,8 @@ struct PillRootView: View {
     }
 
     /// Calendar, timers and the one permission prompt. Each hides itself when it
-    /// has nothing to offer, so the resting panel stays short.
+    /// has nothing to offer, so the resting panel stays short, and the whole
+    /// group stands down while a player has the panel.
     @ViewBuilder
     private var secondary: some View {
         CalendarRow(calendar: calendar,

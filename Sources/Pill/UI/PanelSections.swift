@@ -372,53 +372,64 @@ struct NowPlayingRow: View {
 
     // MARK: Full player
 
+    /// The hero of the panel whenever something is playing, laid out as drawn:
+    /// the app name over a large cover, the track beside it, elapsed time at the
+    /// right, a full-width scrubber, and the transport centred underneath.
     private func player(_ playback: MediaPlayback) -> some View {
-        HStack(spacing: 11) {
-            artworkView
+        VStack(alignment: .leading, spacing: 7) {
+            Text(nowPlaying.source?.name ?? "Now Playing")
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.45))
 
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(playback.title)
-                        .font(.system(size: 12.5, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                    Spacer(minLength: 0)
-                    Text(playback.positionText)
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
-                        .monospacedDigit()
+            HStack(spacing: 12) {
+                artworkView
+
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(playback.title)
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                        Text(playback.positionText)
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(.white.opacity(0.6))
+                    }
+
+                    // Two lines rather than the sketch's single "Love by Him":
+                    // real track names are long, and on one line the artist is
+                    // the half that gets truncated away.
+                    Text("by \(playback.artist)")
+                        .font(.system(size: 11.5, design: .rounded))
                         .foregroundStyle(.white.opacity(0.55))
-                }
+                        .lineLimit(1)
+                        .padding(.top, 2)
 
-                Text(playback.artist)
-                    .font(.system(size: 10.5, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.52))
-                    .lineLimit(1)
-                    .padding(.top, 1)
-
-                scrubber(playback.progress)
-                    .padding(.top, 7)
-
-                HStack(spacing: 0) {
                     Spacer(minLength: 0)
-                    control("backward.fill", size: 11, action: onPrevious)
-                    control(playback.isPlaying ? "pause.fill" : "play.fill", size: 14, action: onPlayPause)
-                    control("forward.fill", size: 11, action: onNext)
-                    Spacer(minLength: 0)
-                    Text(playback.durationText)
-                        .font(.system(size: 9, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(.white.opacity(0.35))
+
+                    scrubber(playback.progress)
+
+                    HStack(spacing: 0) {
+                        Spacer(minLength: 0)
+                        control("backward.fill", size: 13, action: onPrevious)
+                        control(playback.isPlaying ? "pause.fill" : "play.fill", size: 17, action: onPlayPause)
+                        control("forward.fill", size: 13, action: onNext)
+                        Spacer(minLength: 0)
+                        Text(playback.durationText)
+                            .font(.system(size: 10, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(.white.opacity(0.38))
+                    }
+                    .padding(.top, 4)
                 }
-                .padding(.top, 3)
+                .frame(height: 82)
             }
         }
-        .frame(height: 66)
-        // The sketch draws the player as its own box. Without one it runs
-        // straight into the shelf label and the two read as a single block.
-        .padding(7)
+        .padding(10)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(.white.opacity(0.05))
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(.white.opacity(0.06))
         )
         .onAppear { artwork.load(playback.artworkURL) }
         .onChange(of: playback.artworkURL) { _, url in artwork.load(url) }
@@ -431,26 +442,26 @@ struct NowPlayingRow: View {
             } else {
                 // A neutral placeholder, so the layout does not jump when the
                 // download lands.
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
                     .fill(.white.opacity(0.10))
                     .overlay(Image(systemName: "music.note")
-                        .font(.system(size: 18))
+                        .font(.system(size: 22))
                         .foregroundStyle(.white.opacity(0.35)))
             }
         }
-        .frame(width: 62, height: 62)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .frame(width: 82, height: 82)
+        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
     }
 
     private func scrubber(_ progress: Double) -> some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 Capsule().fill(.white.opacity(0.15))
-                Capsule().fill(.white.opacity(0.8))
+                Capsule().fill(.white.opacity(0.85))
                     .frame(width: max(2, geometry.size.width * progress))
             }
         }
-        .frame(height: 3)
+        .frame(height: 4)
         .animation(.linear(duration: 0.9), value: progress)
     }
 
@@ -459,7 +470,7 @@ struct NowPlayingRow: View {
             Image(systemName: symbol)
                 .font(.system(size: size, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.92))
-                .frame(width: 30, height: 20)
+                .frame(width: 34, height: 24)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
