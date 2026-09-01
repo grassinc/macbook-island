@@ -258,3 +258,39 @@ struct EmailRow: View {
         .frame(height: 22)
     }
 }
+
+/// What is currently making sound.
+struct NowPlayingRow: View {
+    @ObservedObject var nowPlaying: NowPlayingStore
+
+    var body: some View {
+        if let source = nowPlaying.source {
+            HStack(spacing: 7) {
+                Image(systemName: "waveform")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.green)
+                    .symbolEffect(.variableColor.iterative, options: .repeating)
+                if let track = nowPlaying.track {
+                    Text(track)
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    Text(source.name)
+                        .font(.system(size: 10, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.45))
+                        .lineLimit(1)
+                } else {
+                    Text(source.name)
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    Text("playing")
+                        .font(.system(size: 10, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.45))
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(height: 22)
+        }
+    }
+}

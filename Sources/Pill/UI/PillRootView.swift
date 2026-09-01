@@ -12,6 +12,7 @@ struct PillRootView: View {
     @ObservedObject var calendar: CalendarStore
     @ObservedObject var privacy: PrivacyStore
     @ObservedObject var email: EmailStore
+    @ObservedObject var nowPlaying: NowPlayingStore
 
     var body: some View {
         ZStack {
@@ -116,6 +117,7 @@ struct PillRootView: View {
         case .thermal:     return "thermometer.medium"
         case .battery:     return "battery.25"
         case .email:       return "envelope.fill"
+        case .nowPlaying:  return "waveform"
         case .generic:     return "circle.fill"
         }
     }
@@ -174,6 +176,8 @@ struct PillRootView: View {
                        onRemove: { model.removeShelfItem?($0) },
                        onClear: { model.clearShelf?() },
                        onDragStart: { model.beginShelfDrag?() })
+
+            NowPlayingRow(nowPlaying: nowPlaying)
 
             EmailRow(email: email,
                      redacted: privacy.isScreenSharing,

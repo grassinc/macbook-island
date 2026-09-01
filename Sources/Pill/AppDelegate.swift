@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let calendarStore = CalendarStore()
     private let privacyStore = PrivacyStore()
     private let emailStore = EmailStore()
+    private let nowPlayingStore = NowPlayingStore()
 
     private var model: PillViewModel!
     private var registry: ModuleRegistry!
@@ -31,12 +32,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var calendarModule: CalendarModule!
     private var privacyModule: PrivacyModule!
     private var emailModule: EmailModule!
+    private var nowPlayingModule: NowPlayingModule!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         model = PillViewModel(audio: audioStore, hud: hudStore, shelf: shelfStore,
                               thermal: thermalStore, battery: batteryStore,
                               timer: timerStore, calendar: calendarStore, privacy: privacyStore,
-                              email: emailStore)
+                              email: emailStore, nowPlaying: nowPlayingStore)
         presenter = ActivityPresenter(coordinator: coordinator, model: model, privacy: privacyStore)
 
         audioModule = AudioOutputModule(store: audioStore)
@@ -48,13 +50,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         calendarModule = CalendarModule(store: calendarStore)
         privacyModule = PrivacyModule(store: privacyStore)
         emailModule = EmailModule(store: emailStore)
+        nowPlayingModule = NowPlayingModule(store: nowPlayingStore)
 
         wireActions()
 
         registry = ModuleRegistry(coordinator: coordinator)
         for module in [audioModule, hudModule, shelfModule, thermalModule,
                        batteryModule, timerModule, calendarModule, privacyModule,
-                       emailModule] as [any PillModule] {
+                       emailModule, nowPlayingModule] as [any PillModule] {
             registry.register(module)
         }
         registry.activateAll()

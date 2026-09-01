@@ -25,6 +25,7 @@ public enum ActivityKind: Sendable, Equatable, Hashable {
     case audioOutput
     case hud
     case brightness
+    case nowPlaying
     case screenshot
     case calendar
     case timer

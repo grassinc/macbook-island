@@ -91,6 +91,23 @@
   HxStore.hxd or scraping Notification Center are both excluded -- the brief
   rules them out and they are fragile across releases.
 
+## Now playing: MediaRemote vs the public route (verified 2026-09-01)
+- Called MRMediaRemoteGetNowPlayingInfo directly for the first time rather than
+  reasoning about it: dlopen succeeds, all three symbols are present, the
+  callback FIRES, and the dictionary comes back nil. Consistent with the
+  post-15.4 gate. Not fully conclusive on its own (nothing may have been
+  registered as now-playing), but it matches documented gated behaviour and
+  there is no obtainable entitlement.
+- PUBLIC alternative that works: kAudioHardwarePropertyProcessObjectList
+  (macOS 14.4+) plus kAudioProcessPropertyIsRunningOutput per process. Verified
+  live: pid=675 outputting=true bundle=app.zen-browser.zen.
+- It answers a narrower question -- WHICH APP is producing sound, not which
+  track is queued -- but needs no permission and cannot be withdrawn in a point
+  release. Track titles are layered on via AppleScript for Music and Spotify only.
+- Full lifecycle verified event-driven: audio from Zen -> audio stopped ->
+  audio from Zen, with no polling.
+- CLI audio (afplay) has no bundle id and is correctly filtered out.
+
 ## Open questions
 - Does stopping OSDUIHelper require anything beyond killing it on macOS 26? Verify.
 - Confirm ad-hoc signed bundle can hold a stable TCC identity across rebuilds.
