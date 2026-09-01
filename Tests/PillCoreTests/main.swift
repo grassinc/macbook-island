@@ -1,4 +1,6 @@
 let runner = TestRunner()
 runActivityCoordinatorTests(runner)
 runPillGeometryTests(runner)
+runModuleTests(runner)
+runAudioOutputTests(runner)
 runner.finish()
