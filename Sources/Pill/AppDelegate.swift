@@ -5,27 +5,81 @@ import PillCore
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let coordinator = ActivityCoordinator()
+
+    // Observable stores, each owned by its module and read by the UI.
     private let audioStore = AudioOutputStore()
     private let hudStore = HUDStore()
     private let shelfStore = ShelfObservable()
+    private let thermalStore = ThermalStore()
+    private let batteryStore = BatteryStore()
+    private let timerStore = TimerStore()
+    private let calendarStore = CalendarStore()
+    private let privacyStore = PrivacyStore()
 
     private var model: PillViewModel!
     private var registry: ModuleRegistry!
     private var presenter: ActivityPresenter!
     private var controller: PillWindowController!
+
     private var audioModule: AudioOutputModule!
     private var hudModule: HUDModule!
     private var shelfModule: ShelfModule!
+    private var thermalModule: ThermalModule!
+    private var batteryModule: BatteryModule!
+    private var timerModule: TimerModule!
+    private var calendarModule: CalendarModule!
+    private var privacyModule: PrivacyModule!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        model = PillViewModel(audio: audioStore, hud: hudStore, shelf: shelfStore)
-        presenter = ActivityPresenter(coordinator: coordinator, model: model)
+        model = PillViewModel(audio: audioStore, hud: hudStore, shelf: shelfStore,
+                              thermal: thermalStore, battery: batteryStore,
+                              timer: timerStore, calendar: calendarStore, privacy: privacyStore)
+        presenter = ActivityPresenter(coordinator: coordinator, model: model, privacy: privacyStore)
 
         audioModule = AudioOutputModule(store: audioStore)
-        model.selectDevice = { [weak self] device in self?.audioModule.select(device) }
-
         hudModule = HUDModule(store: hudStore)
         shelfModule = ShelfModule(observable: shelfStore)
+        thermalModule = ThermalModule(store: thermalStore)
+        batteryModule = BatteryModule(store: batteryStore)
+        timerModule = TimerModule(store: timerStore)
+        calendarModule = CalendarModule(store: calendarStore)
+        privacyModule = PrivacyModule(store: privacyStore)
+
+        wireActions()
+
+        registry = ModuleRegistry(coordinator: coordinator)
+        for module in [audioModule, hudModule, shelfModule, thermalModule,
+                       batteryModule, timerModule, calendarModule, privacyModule] as [any PillModule] {
+            registry.register(module)
+        }
+        registry.activateAll()
+
+        controller = PillWindowController(model: model)
+        controller.show()
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        registry?.deactivateAll()
+    }
+
+    private func wireActions() {
+        model.selectDevice = { [weak self] device in self?.audioModule.select(device) }
+
+        model.requestAccessibility = {
+            // The prompt only appears once; opening the pane too means the
+            // button always does something visible.
+            MediaKeyTap.requestTrust()
+            AccessibilityMonitor.openSettings()
+            Log.permissions.notice("accessibility prompt requested")
+        }
+        model.onExpand = { [weak self] in
+            guard let self else { return }
+            self.shelfModule.pruneMissing()
+            guard !self.hudStore.isReplacingSystemHUD else { return }
+            if self.hudModule.retryKeyTap() {
+                Log.permissions.notice("key tap started after grant")
+            }
+        }
 
         model.addFiles = { [weak self] urls in self?.shelfModule.addDropped(urls) }
         model.runTransform = { [weak self] action, item in self?.shelfModule.runTransform(action, on: item) }
@@ -34,32 +88,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.beginShelfDrag = { [weak self] in self?.shelfModule.beginDrag() }
         shelfModule.onDragEnded = { [weak self] in self?.model.endShelfDrag() }
 
-        registry = ModuleRegistry(coordinator: coordinator)
-        registry.register(audioModule)
-        registry.register(hudModule)
-        registry.register(shelfModule)
-        registry.activateAll()
+        model.startTimer = { [weak self] duration in self?.timerModule.start(duration: duration) }
+        model.startPomodoro = { [weak self] in self?.timerModule.startPomodoro() }
+        model.toggleTimerPause = { [weak self] in self?.timerModule.togglePause() }
+        model.cancelTimer = { [weak self] in self?.timerModule.cancel() }
 
-        model.requestAccessibility = {
-            // The prompt only appears the first time; opening the pane as well
-            // means the button always does something visible.
-            MediaKeyTap.requestTrust()
-            AccessibilityMonitor.openSettings()
-            Log.permissions.notice("accessibility prompt requested")
-        }
-        // Re-check on expand rather than polling for the grant.
-        model.onExpand = { [weak self] in
-            guard let self, !self.hudStore.isReplacingSystemHUD else { return }
-            if self.hudModule.retryKeyTap() {
-                Log.permissions.notice("key tap started after grant")
-            }
-        }
-
-        controller = PillWindowController(model: model)
-        controller.show()
-    }
-
-    func applicationWillTerminate(_ notification: Notification) {
-        registry?.deactivateAll()
+        model.requestCalendarAccess = { [weak self] in self?.calendarModule.requestAccess() }
+        model.toggleScreenShare = { [weak self] in self?.privacyModule.toggle() }
     }
 }

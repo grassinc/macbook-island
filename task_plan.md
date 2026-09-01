@@ -47,3 +47,13 @@ built twice.
   Spotlight has not yet set kMDItemIsScreenCapture, so an image saved to the
   Desktop by other means can land in the shelf.
 - No full first-run onboarding window yet.
+
+
+## Added 2026-09-01 (second owner request)
+- [x] Shelf persistence across quit/reboot (~/Library/Application Support/Pill/shelf.json)
+- [x] Thermal indicator (brief 13)
+- [x] Battery: internal + Magic mouse/trackpad/keyboard (brief 7, partial)
+- [x] Pomodoro + countdown timers (brief 12)
+- [x] Calendar peek with one-click join (brief 8)
+- [x] Screen-share mode, manual toggle (brief 14)
+- [ ] AirPods and iPhone battery: NOT possible with public API. See findings.

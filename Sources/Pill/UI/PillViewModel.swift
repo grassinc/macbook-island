@@ -16,38 +16,72 @@ final class PillViewModel: ObservableObject {
     let audio: AudioOutputStore
     let hud: HUDStore
     let shelf: ShelfObservable
+    let thermal: ThermalStore
+    let battery: BatteryStore
+    let timer: TimerStore
+    let calendar: CalendarStore
+    let privacy: PrivacyStore
 
-    /// Set by the app so the view can act without knowing about modules.
+    // Actions, so the views never reach into modules.
     var selectDevice: ((AudioOutputDevice) -> Void)?
     var requestAccessibility: (() -> Void)?
+    var onExpand: (() -> Void)?
     var addFiles: (([URL]) -> Void)?
     var runTransform: ((TransformAction, ShelfItem) -> Void)?
     var removeShelfItem: ((ShelfItem) -> Void)?
     var clearShelf: (() -> Void)?
     var beginShelfDrag: (() -> Void)?
-    /// Called when the panel expands, so permission state can be re-checked
-    /// without polling for it.
-    var onExpand: (() -> Void)?
+    var startTimer: ((TimeInterval) -> Void)?
+    var startPomodoro: (() -> Void)?
+    var toggleTimerPause: (() -> Void)?
+    var cancelTimer: (() -> Void)?
+    var requestCalendarAccess: (() -> Void)?
+    var toggleScreenShare: (() -> Void)?
 
     private var cancellables = Set<AnyCancellable>()
     private var collapseWork: DispatchWorkItem?
-    private static let collapsedSize = CGSize(width: 190, height: 30)
 
-    init(audio: AudioOutputStore, hud: HUDStore, shelf: ShelfObservable) {
+    private static let collapsedSize = CGSize(width: 190, height: 30)
+    private static let expandedWidth: CGFloat = 360
+
+    init(audio: AudioOutputStore, hud: HUDStore, shelf: ShelfObservable,
+         thermal: ThermalStore, battery: BatteryStore, timer: TimerStore,
+         calendar: CalendarStore, privacy: PrivacyStore) {
         self.audio = audio
         self.hud = hud
         self.shelf = shelf
+        self.thermal = thermal
+        self.battery = battery
+        self.timer = timer
+        self.calendar = calendar
+        self.privacy = privacy
         self.size = Self.collapsedSize
 
-        // The expanded panel fits whatever is actually in it: the real device
-        // count, plus the permission row only while it is relevant.
-        Publishers.CombineLatest3($presentation, audio.$state, hud.$isReplacingSystemHUD)
-            .map { presentation, state, replacing -> CGSize in
+        // The panel is sized from what is actually in it. Anything conditional
+        // contributes only while it is on screen, so the pill never reserves
+        // space for a section the user cannot see.
+        let inputs = Publishers.CombineLatest4(
+            $presentation,
+            audio.$state,
+            hud.$isReplacingSystemHUD,
+            Publishers.CombineLatest3(calendar.$nextEvent, timer.$timer, shelf.$items)
+        )
+
+        inputs
+            .map { presentation, audioState, replacing, rest -> CGSize in
                 guard presentation == .expanded else { return Self.collapsedSize }
-                let rows = max(state.devices.count, 1)
-                let permissionRow: CGFloat = replacing ? 0 : 34
-                // 122 covers padding, both section labels, and the 50pt shelf strip.
-                return CGSize(width: 360, height: 122 + CGFloat(rows) * 30 + permissionRow)
+                let (event, runningTimer, _) = rest
+
+                var height: CGFloat = 24        // padding
+                height += 22                    // status row: battery, thermal, share toggle
+                height += 14                    // OUTPUT label
+                height += CGFloat(max(audioState.devices.count, 1)) * 30
+                height += 14 + 50               // SHELF label + strip
+                height += 30                    // timer controls
+                if event != nil { height += 26 }
+                if runningTimer != nil { height += 4 }
+                if !replacing { height += 34 }   // permission row
+                return CGSize(width: Self.expandedWidth, height: height)
             }
             .removeDuplicates()
             .assign(to: \.size, on: self)
@@ -64,7 +98,6 @@ final class PillViewModel: ObservableObject {
     private static let collapseGrace: TimeInterval = 0.18
 
     func setHovered(_ hovered: Bool) {
-        // Debug level: this fires constantly, so it must not spam the log.
         Log.activity.debug("hover=\(hovered, privacy: .public)")
         collapseWork?.cancel()
         collapseWork = nil

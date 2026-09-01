@@ -11,11 +11,13 @@ import PillCore
 final class ActivityPresenter {
     private let coordinator: ActivityCoordinator
     private let model: PillViewModel
+    private let privacy: PrivacyStore
     private var expiryWork: DispatchWorkItem?
 
-    init(coordinator: ActivityCoordinator, model: PillViewModel) {
+    init(coordinator: ActivityCoordinator, model: PillViewModel, privacy: PrivacyStore) {
         self.coordinator = coordinator
         self.model = model
+        self.privacy = privacy
 
         coordinator.onChange = { [weak self] in
             // Modules may notify from a CoreAudio or FSEvents queue.
@@ -25,7 +27,8 @@ final class ActivityPresenter {
 
     func refresh() {
         let now = Date()
-        let selected = coordinator.selection(at: now)
+        // Redact at the display boundary so no module has to remember to.
+        let selected = coordinator.selection(at: now).map { privacy.mode.redact($0) }
         model.setActivity(selected)
         Log.activity.notice("showing=\(selected?.id ?? "nothing", privacy: .public)")
 

@@ -6,6 +6,11 @@ struct PillRootView: View {
     @ObservedObject var audio: AudioOutputStore
     @ObservedObject var hud: HUDStore
     @ObservedObject var shelf: ShelfObservable
+    @ObservedObject var battery: BatteryStore
+    @ObservedObject var thermal: ThermalStore
+    @ObservedObject var timer: TimerStore
+    @ObservedObject var calendar: CalendarStore
+    @ObservedObject var privacy: PrivacyStore
 
     var body: some View {
         ZStack {
@@ -93,6 +98,11 @@ struct PillRootView: View {
         case .audioOutput: return audioIcon
         case .hud:         return volumeIcon(for: activity)
         case .screenshot:  return "camera.viewfinder"
+        case .calendar:    return "calendar"
+        case .timer:       return "timer"
+        case .thermal:     return "thermometer.medium"
+        case .battery:     return "battery.25"
+        case .email:       return "envelope.fill"
         case .generic:     return "circle.fill"
         }
     }
@@ -119,6 +129,9 @@ struct PillRootView: View {
 
     private var expanded: some View {
         VStack(alignment: .leading, spacing: 6) {
+            StatusRow(battery: battery, thermal: thermal, privacy: privacy,
+                      onToggleShare: { model.toggleScreenShare?() })
+
             Text("OUTPUT")
                 .font(.system(size: 9, weight: .bold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.42))
@@ -143,6 +156,16 @@ struct PillRootView: View {
                        onRemove: { model.removeShelfItem?($0) },
                        onClear: { model.clearShelf?() },
                        onDragStart: { model.beginShelfDrag?() })
+
+            CalendarRow(calendar: calendar,
+                        onRequestAccess: { model.requestCalendarAccess?() },
+                        redacted: privacy.isScreenSharing)
+
+            TimerRow(timer: timer,
+                     onPomodoro: { model.startPomodoro?() },
+                     onStart: { model.startTimer?($0) },
+                     onTogglePause: { model.toggleTimerPause?() },
+                     onCancel: { model.cancelTimer?() })
 
             // Shown only while it is actionable. SIP blocks disabling Apple's
             // OSD, so consuming the keys is the only way to replace it, and

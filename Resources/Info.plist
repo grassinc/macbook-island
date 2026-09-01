@@ -17,6 +17,12 @@
 
     <!-- Shown in the TCC prompt when the screenshot tray first reads the
          capture directory. Must say something true and specific. -->
+    <!-- EventKit refuses to prompt without this and takes the app down with it. -->
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>Pill shows your next event and a one-click join button for video calls.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>Pill shows your next event and a one-click join button for video calls.</string>
+
     <key>NSDesktopFolderUsageDescription</key>
     <string>Pill watches your screenshot folder so new screenshots appear in the pill as draggable thumbnails.</string>
 </dict>

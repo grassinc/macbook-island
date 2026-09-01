@@ -49,6 +49,24 @@
   ABSENT on this device, so code must try main element first and fall back to
   channels for devices that only expose those.
 
+## Battery reachability (verified 2026-09-01)
+- Internal battery: IOPowerSources. Works. Read 46-49% during testing.
+- Magic Mouse/Trackpad/Keyboard: IORegistry AppleDeviceManagementHIDEventService
+  `BatteryPercent`. Implemented; none connected here so UNVERIFIED.
+- AirPods: level travels over a Bluetooth profile Apple does not expose publicly.
+  Apps that show it use private frameworks. NOT DONE.
+- iPhone: no public channel for a paired iPhone's battery. `ioreg -k BatteryPercent`
+  returned nothing with no device attached; needs retesting with an iPhone plugged
+  in before claiming anything either way. NOT DONE.
+
+## TCC identity trap (verified 2026-09-01)
+- Ad-hoc signed apps are identified to TCC by cdhash. EVERY rebuild changes it,
+  silently invalidating an Accessibility grant while the app still appears ticked
+  in System Settings. Confirmed: user granted at 12:05, two rebuilds followed,
+  and the app still reported accessibility=false.
+- Workarounds: (a) grant AFTER the final build, or (b) sign with a stable
+  self-signed certificate so identity survives rebuilds.
+
 ## Open questions
 - Does stopping OSDUIHelper require anything beyond killing it on macOS 26? Verify.
 - Confirm ad-hoc signed bundle can hold a stable TCC identity across rebuilds.
