@@ -15,3 +15,11 @@
 - P2 DONE: Activity, ActivityPriority, ActivityCoordinator. 11 checks green,
   including preemption-restoration (HUD covers a screenshot thumbnail and the
   thumbnail returns on expiry) and republish-replaces-by-id.
+- P1+P3 DONE: app bundle builds, launches, pill visible at top-centre.
+  Verified against the real display (CGWindowList, needs no Screen Recording):
+    X=625 Y=2 W=190 H=30 layer=26 alpha=1.0
+  X=625 == (1440-190)/2 exactly matches the centring unit test.
+  Focus not stolen (frontmost stayed 'zen'); ApplicationType=UIElement;
+  idle CPU time 0:00.93 -> 0:00.93 across 12s (zero), RSS 25 MB.
+  Note: `screencapture` is blocked (no Screen Recording for the terminal), so
+  visual checks use CGWindowListCopyWindowInfo instead.

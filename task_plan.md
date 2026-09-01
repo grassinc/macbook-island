@@ -13,9 +13,9 @@ with three features: HUD replacement, audio output switcher, screenshot catch tr
 
 ## Phases
 - [x] P0  Toolchain ready (CLT installed, swiftc verified)
-- [ ] P1  Buildable app bundle: SwiftPM package + Info.plist + build script + ad-hoc sign
+- [x] P1  Buildable app bundle: SwiftPM package + Info.plist + build script + ad-hoc sign
 - [x] P2  Core model: Activity, ActivityPriority, ActivityCoordinator (+ tests, TDD)
-- [ ] P3  Window layer: PillPanel, positioning, hover tracking, fullscreen policy
+- [x] P3  Window layer: PillPanel, positioning, hover tracking, fullscreen policy
 - [ ] P4  Module boundary: PillModule, ModuleContext, registry
 - [ ] P5  Audio output switcher module (CoreAudio, no permissions)
 - [ ] P6  HUD module (volume first; brightness/backlight behind Accessibility)
