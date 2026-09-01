@@ -23,8 +23,11 @@ final class PillPanel: NSPanel {
 
         hidesOnDeactivate = false
         // Draggable by its background so the user can put it wherever they
-        // like. SwiftUI controls consume their own mouse events, so buttons and
-        // shelf-tile drags still work.
+        // like. This is NOT enough on its own: AppKit handles background
+        // dragging at the window level, before the event reaches any subview,
+        // so it beat the shelf tiles' own drag and moved the island instead of
+        // the file. The window controller switches it off while the pointer is
+        // over a tile.
         isMovable = true
         isMovableByWindowBackground = true
 

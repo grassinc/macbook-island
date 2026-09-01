@@ -52,6 +52,7 @@ final class PillWindowController {
         placement = PlacementStore.load()
 
         observeSize()
+        observeShelfHover()
         observeScreenChanges()
         observePresentationForPointerTracking()
         observeUserDrags()
@@ -77,6 +78,22 @@ final class PillWindowController {
     }
 
     // MARK: - Reacting to state
+
+    /// A drag that starts on a shelf tile must drag the file, not the island.
+    ///
+    /// `isMovableByWindowBackground` is handled by AppKit before the event
+    /// reaches any subview, so it has to be switched off in advance — by the
+    /// time the drag begins it is already too late to decide.
+    private func observeShelfHover() {
+        model.shelf.$hoveredTileID
+            .map { $0 == nil }
+            .removeDuplicates()
+            .sink { [weak self] movable in
+                self?.panel.isMovableByWindowBackground = movable
+                Log.activity.debug("window drag \(movable ? "enabled" : "disabled", privacy: .public)")
+            }
+            .store(in: &cancellables)
+    }
 
     private func observeSize() {
         model.$size

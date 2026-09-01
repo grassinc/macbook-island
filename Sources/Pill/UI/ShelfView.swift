@@ -74,7 +74,7 @@ struct ShelfStrip: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 6) {
                             ForEach(shelf.items) { item in
-                                ShelfTile(item: item,
+                                ShelfTile(shelf: shelf, item: item,
                                           onTransform: { onTransform($0, item) },
                                           onRemove: { onRemove(item) },
                                           onDragStart: onDragStart)
@@ -107,6 +107,7 @@ struct ShelfStrip: View {
 }
 
 private struct ShelfTile: View {
+    @ObservedObject var shelf: ShelfObservable
     let item: ShelfItem
     let onTransform: (TransformAction) -> Void
     let onRemove: () -> Void
@@ -144,7 +145,11 @@ private struct ShelfTile: View {
                 .offset(x: 3, y: -3)
             }
         }
-        .onHover { hovering = $0 }
+        .onHover { inside in
+            hovering = inside
+            if inside { shelf.hoveredTileID = item.id }
+            else if shelf.hoveredTileID == item.id { shelf.hoveredTileID = nil }
+        }
         // Drag straight back out to any app: Finder, Mail, WhatsApp, anything
         // that accepts a file. The provider hands over the file URL, which is
         // what those apps expect for an attachment.

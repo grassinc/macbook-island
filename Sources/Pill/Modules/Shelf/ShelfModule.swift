@@ -11,6 +11,16 @@ final class ShelfObservable: ObservableObject {
     /// not collapse during this: collapsing removes the shelf from the view
     /// tree, which pulls the drag source out from under an in-flight drag.
     @Published var isDraggingOut = false
+    /// Which tile the pointer is over, if any.
+    ///
+    /// The panel is draggable by its background so the pill can be moved
+    /// anywhere. AppKit handles that at the window level, before a subview sees
+    /// the event, so starting a drag on a tile moved the whole island instead
+    /// of dragging the file out. Background dragging is switched off while the
+    /// pointer is on a tile. Stored as an id rather than a flag because moving
+    /// between two adjacent tiles can deliver the new tile's enter before the
+    /// old one's exit, and a plain flag would end up false.
+    @Published var hoveredTileID: String?
     /// Last transform failure, surfaced in the panel rather than swallowed.
     @Published fileprivate(set) var lastError: String?
 }
@@ -116,6 +126,10 @@ final class ShelfModule: PillModule {
         dragEnd.onDragEnd = { [weak self] in
             guard let self, self.observable.isDraggingOut else { return }
             self.observable.isDraggingOut = false
+            // Hover events are not delivered during a drag, so the tile that
+            // started it never reports an exit. Left set, it would leave the
+            // pill permanently unmovable.
+            self.observable.hoveredTileID = nil
             self.dragEnd.stop()
             Log.activity.debug("drag-out finished")
             self.onDragEnded?()

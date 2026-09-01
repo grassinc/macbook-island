@@ -130,6 +130,8 @@ final class PillViewModel: ObservableObject {
                     return
                 }
                 Log.activity.debug("collapse committed")
+                // The tiles go away without reporting an exit.
+                self.shelf.hoveredTileID = nil
                 self.presentation = .collapsed
                 self.onPanelOpenChanged?(false)
             }
