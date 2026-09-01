@@ -17,6 +17,7 @@ final class PillWindowController {
     private let model: PillViewModel
     private var cancellables = Set<AnyCancellable>()
     private var shrinkWork: DispatchWorkItem?
+    private var applyWork: DispatchWorkItem?
     private var pointerMonitor: Any?
     private var moveObserver: NSObjectProtocol?
     private var resetHotKey: GlobalHotKey?
@@ -28,6 +29,9 @@ final class PillWindowController {
 
     /// Gap between the top of the screen and the pill.
     private let topInset: CGFloat = 2
+    /// A few points of slack so the pill does not snap shut when the pointer
+    /// grazes the very edge on its way to a control.
+    private let exitSlack: CGFloat = 6
 
     init(model: PillViewModel) {
         self.model = model
@@ -50,6 +54,11 @@ final class PillWindowController {
         observePresentationForPointerTracking()
         observeUserDrags()
         installResetHotKey()
+        model.pointerIsOverPanel = { [weak self] in
+            guard let self else { return false }
+            return self.panel.frame.insetBy(dx: -self.exitSlack, dy: -self.exitSlack)
+                .contains(NSEvent.mouseLocation)
+        }
     }
 
     func show() {
@@ -78,7 +87,18 @@ final class PillWindowController {
     /// too-small window. Shrinking waits for the collapse animation to finish,
     /// for the same reason in reverse. Both are one-shot work items, so the idle
     /// path schedules nothing.
+    /// Size arrives in two parts — the width when the presentation flips, then
+    /// the measured height once SwiftUI has laid out. Applying each separately
+    /// animated the panel twice, which reads as a stutter. Coalescing within a
+    /// single run-loop turn makes it one movement.
     private func applySize(_ target: CGSize) {
+        applyWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.commitSize(target) }
+        applyWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.016, execute: work)
+    }
+
+    private func commitSize(_ target: CGSize) {
         shrinkWork?.cancel()
         shrinkWork = nil
 
@@ -155,9 +175,6 @@ final class PillWindowController {
         pointerMonitor = nil
     }
 
-    /// A few points of slack so the pill does not snap shut when the pointer
-    /// grazes the very edge on its way to a control.
-    private let exitSlack: CGFloat = 6
 
     private func collapseIfPointerLeft() {
         let generous = panel.frame.insetBy(dx: -exitSlack, dy: -exitSlack)

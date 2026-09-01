@@ -38,13 +38,17 @@ final class PillViewModel: ObservableObject {
     var cancelTimer: (() -> Void)?
     var requestCalendarAccess: (() -> Void)?
     var toggleScreenShare: (() -> Void)?
+    /// Supplied by the window controller. SwiftUI reports a hover as the panel
+    /// animates under the cursor; without this the pill re-opens mid-close and
+    /// visibly jitters sideways.
+    var pointerIsOverPanel: (() -> Bool)?
     var connectEmail: (() -> Void)?
 
     private var cancellables = Set<AnyCancellable>()
     private var collapseWork: DispatchWorkItem?
 
-    private static let collapsedSize = CGSize(width: 190, height: 30)
-    private static let expandedWidth: CGFloat = 360
+    static let collapsedSize = CGSize(width: 260, height: 38)
+    private static let expandedWidth: CGFloat = 440
 
     init(audio: AudioOutputStore, hud: HUDStore, shelf: ShelfObservable,
          thermal: ThermalStore, battery: BatteryStore, timer: TimerStore,
@@ -113,6 +117,11 @@ final class PillViewModel: ObservableObject {
             return
         }
 
+        // Trust the pointer, not the hover event.
+        if let pointerIsOverPanel, !pointerIsOverPanel() {
+            Log.activity.debug("ignoring hover: pointer is not over the panel")
+            return
+        }
         presentation = .expanded
         onExpand?()
     }

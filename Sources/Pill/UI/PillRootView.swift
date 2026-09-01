@@ -60,13 +60,13 @@ struct PillRootView: View {
     }
 
     private var shape: some InsettableShape {
-        RoundedRectangle(cornerRadius: model.presentation == .collapsed ? 15 : 22, style: .continuous)
+        RoundedRectangle(cornerRadius: model.presentation == .collapsed ? 19 : 26, style: .continuous)
     }
 
     @ViewBuilder
     private var content: some View {
         switch model.presentation {
-        case .collapsed: collapsed.padding(.horizontal, 12).frame(height: 30)
+        case .collapsed: collapsed.padding(.horizontal, 14).frame(height: PillViewModel.collapsedSize.height)
         case .expanded:  expanded.padding(12)
         }
     }
@@ -78,16 +78,16 @@ struct PillRootView: View {
         if let activity = model.activity {
             HStack(spacing: 8) {
                 Image(systemName: icon(for: activity))
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white)
-                    .frame(width: 14)
+                    .frame(width: 16)
 
                 if let progress = activity.progress {
                     // A meter reads faster than a number at this size.
                     Meter(value: progress)
                 } else {
                     Text(activity.title.isEmpty ? activity.id : activity.title)
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundStyle(.white)
                         .lineLimit(1)
                     Spacer(minLength: 0)
@@ -99,7 +99,7 @@ struct PillRootView: View {
             // ignore when it has nothing to say.
             HStack {
                 Spacer()
-                Capsule().fill(.white.opacity(0.22)).frame(width: 26, height: 3)
+                Capsule().fill(.white.opacity(0.22)).frame(width: 34, height: 4)
                 Spacer()
             }
         }

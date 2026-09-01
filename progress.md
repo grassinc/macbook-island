@@ -116,3 +116,23 @@
   primary mouse button actually being down, which only a real drag produces.
 - Verified: 190x30 -> 360x288 -> 190x30 on both downward and sideways exits,
   and the placement key stays unset through launch and a full hover cycle.
+
+## 2026-09-01 (sideways jitter + bigger pill)
+- SIDEWAYS JITTER FIXED. Two causes, both real:
+  1) A re-expand bounce. As the panel animated closed it moved under the cursor,
+     SwiftUI fired a spurious onHover(true), the pill reopened, and the pointer
+     check closed it again. Opening is now validated against the real pointer
+     position, not just the hover event.
+  2) A two-step animation. Size arrives in two parts -- width when the
+     presentation flips, then the measured height after layout -- so the panel
+     animated twice. Frame updates are now coalesced within one run-loop turn.
+  Verified by dense sampling (60 samples across a close): distinct widths are
+  exactly [260, 440], with no growth after shrinking has begun. Three passes.
+- Pill enlarged at the owner's request: collapsed 190x30 -> 260x38, expanded
+  width 360 -> 440. Corner radii, icon and text sizes scaled to match rather
+  than leaving the content adrift in a bigger shape.
+- The collapsed height had been hardcoded at 30 in the view, so the first
+  attempt at enlarging silently did nothing vertically. Now a single source of
+  truth on PillViewModel.
+- Idle CPU still flat (0:00.88 -> 0:00.89 across 12s); the pointer monitor runs
+  only while the panel is open.
