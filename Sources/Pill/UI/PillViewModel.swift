@@ -57,35 +57,25 @@ final class PillViewModel: ObservableObject {
         self.privacy = privacy
         self.size = Self.collapsedSize
 
-        // The panel is sized from what is actually in it. Anything conditional
-        // contributes only while it is on screen, so the pill never reserves
-        // space for a section the user cannot see.
-        let inputs = Publishers.CombineLatest4(
-            $presentation,
-            audio.$state,
-            hud.$isReplacingSystemHUD,
-            Publishers.CombineLatest3(calendar.$nextEvent, timer.$timer, shelf.$items)
-        )
-
-        inputs
-            .map { presentation, audioState, replacing, rest -> CGSize in
-                guard presentation == .expanded else { return Self.collapsedSize }
-                let (event, runningTimer, _) = rest
-
-                var height: CGFloat = 24        // padding
-                height += 22                    // status row: battery, thermal, share toggle
-                height += 14                    // OUTPUT label
-                height += CGFloat(max(audioState.devices.count, 1)) * 30
-                height += 14 + 50               // SHELF label + strip
-                height += 30                    // timer controls
-                if event != nil { height += 26 }
-                if runningTimer != nil { height += 4 }
-                if !replacing { height += 34 }   // permission row
-                return CGSize(width: Self.expandedWidth, height: height)
-            }
+        // Width is ours to choose; HEIGHT IS MEASURED, never computed.
+        // Hand-adding section heights silently forgot the VStack spacing and
+        // clipped the bottom of the panel, and any such formula rots the moment
+        // a section is added. The view reports what it actually needs.
+        $presentation
+            .map { $0 == .collapsed ? Self.collapsedSize.width : Self.expandedWidth }
             .removeDuplicates()
-            .assign(to: \.size, on: self)
+            .sink { [weak self] width in
+                guard let self else { return }
+                self.size = CGSize(width: width, height: self.size.height)
+            }
             .store(in: &cancellables)
+    }
+
+    /// Reported by the view once SwiftUI has laid the content out.
+    func setMeasuredHeight(_ height: CGFloat) {
+        let rounded = height.rounded(.up)
+        guard rounded > 0, abs(rounded - size.height) > 0.5 else { return }
+        size = CGSize(width: size.width, height: rounded)
     }
 
     /// Collapse is delayed; expand is immediate.

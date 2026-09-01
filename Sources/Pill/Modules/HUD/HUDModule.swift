@@ -30,6 +30,8 @@ final class HUDModule: PillModule {
     private var context: ModuleContext?
 
     private var device: AudioObjectID = 0
+    /// Last values actually shown, so a redundant notification is dropped.
+    private var lastPublished: (level: Double, muted: Bool)?
     private var volumeTeardown: (() -> Void)?
     private var defaultDeviceTeardown: (() -> Void)?
 
@@ -138,9 +140,16 @@ final class HUDModule: PillModule {
     }
 
     /// Reflects a change made elsewhere (Control Centre, another app).
+    ///
+    /// CoreAudio notifies the volume and mute listeners for a single volume
+    /// change, so this arrives twice per keypress. Publishing both times is
+    /// harmless for the pill (same activity id) but doubles the OSD-dismissal
+    /// work, so identical values are dropped.
     private func publishCurrent() {
         guard device != 0, let level = VolumeController.volume(of: device) else { return }
-        publish(level: level, muted: VolumeController.isMuted(device))
+        let muted = VolumeController.isMuted(device)
+        if let last = lastPublished, last.level == level, last.muted == muted { return }
+        publish(level: level, muted: muted)
 
         // Without the tap the key reached the system, so Apple's OSD is on its
         // way. Best-effort dismissal only: OSDUIHelper is launched on demand and
@@ -170,6 +179,7 @@ final class HUDModule: PillModule {
             expiresAt: now.addingTimeInterval(visibleFor),
             progress: muted ? 0 : level
         ))
+        lastPublished = (level, muted)
         Log.hud.notice("volume level=\(level, privacy: .public) muted=\(muted, privacy: .public)")
     }
 }

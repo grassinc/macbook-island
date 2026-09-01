@@ -18,7 +18,15 @@ struct PillRootView: View {
             shape.strokeBorder(.white.opacity(0.10), lineWidth: 0.5)
             content
         }
-        .frame(width: model.size.width, height: model.size.height)
+        // Width is fixed; height comes from the content and is reported back,
+        // so the panel can never clip what it is asked to show.
+        .frame(width: model.size.width)
+        .fixedSize(horizontal: false, vertical: true)
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.height
+        } action: { height in
+            model.setMeasuredHeight(height)
+        }
         .animation(.spring(response: 0.34, dampingFraction: 0.84), value: model.size)
         .animation(.easeInOut(duration: 0.18), value: model.activity)
         .contentShape(shape)
@@ -54,7 +62,7 @@ struct PillRootView: View {
     @ViewBuilder
     private var content: some View {
         switch model.presentation {
-        case .collapsed: collapsed.padding(.horizontal, 12)
+        case .collapsed: collapsed.padding(.horizontal, 12).frame(height: 30)
         case .expanded:  expanded.padding(12)
         }
     }
@@ -191,7 +199,7 @@ struct PillRootView: View {
                 .buttonStyle(.plain)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 }
 

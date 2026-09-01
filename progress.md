@@ -63,3 +63,17 @@
     the underlying file has been moved or deleted. Otherwise a dead tile fails
     silently at the moment of dropping into another app.
 - KNOWN GAP: the shelf does NOT persist across restarts; quitting Pill empties it.
+
+## 2026-09-01 (bug fix)
+- PANEL WAS CLIPPING ITS OWN CONTENT. The expanded height was hand-computed by
+  adding section heights, and the VStack spacing was never included: the formula
+  gave 218pt where the content actually needs 260pt, so ~42pt was cut off the
+  bottom (the permission row and part of the timer row simply were not visible).
+- Fixed by making the panel self-measuring: width is chosen, height is REPORTED
+  by the view via onGeometryChange. No arithmetic to rot when a section is added.
+  Also removed a maxHeight: .infinity that is meaningless once height is
+  unbounded. Verified 360x260 expanded, 190x30 collapsed, one clean hover cycle,
+  no oscillation, 0% CPU.
+- Deduped volume publishes: CoreAudio notifies both the volume and mute listeners
+  for one change, so every keypress did the work (and the OSD dismissal) twice.
+  Now 1 publish per change, verified.
