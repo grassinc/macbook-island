@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let coordinator = ActivityCoordinator()
     private let audioStore = AudioOutputStore()
     private let hudStore = HUDStore()
+    private let shelfStore = ShelfObservable()
 
     private var model: PillViewModel!
     private var registry: ModuleRegistry!
@@ -14,19 +15,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var controller: PillWindowController!
     private var audioModule: AudioOutputModule!
     private var hudModule: HUDModule!
+    private var shelfModule: ShelfModule!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        model = PillViewModel(audio: audioStore, hud: hudStore)
+        model = PillViewModel(audio: audioStore, hud: hudStore, shelf: shelfStore)
         presenter = ActivityPresenter(coordinator: coordinator, model: model)
 
         audioModule = AudioOutputModule(store: audioStore)
         model.selectDevice = { [weak self] device in self?.audioModule.select(device) }
 
         hudModule = HUDModule(store: hudStore)
+        shelfModule = ShelfModule(observable: shelfStore)
+
+        model.addFiles = { [weak self] urls in self?.shelfModule.addDropped(urls) }
+        model.runTransform = { [weak self] action, item in self?.shelfModule.runTransform(action, on: item) }
+        model.removeShelfItem = { [weak self] item in self?.shelfModule.remove(item) }
+        model.clearShelf = { [weak self] in self?.shelfModule.clear() }
 
         registry = ModuleRegistry(coordinator: coordinator)
         registry.register(audioModule)
         registry.register(hudModule)
+        registry.register(shelfModule)
         registry.activateAll()
 
         model.requestAccessibility = {

@@ -15,20 +15,27 @@ final class PillViewModel: ObservableObject {
 
     let audio: AudioOutputStore
     let hud: HUDStore
+    let shelf: ShelfObservable
 
     /// Set by the app so the view can act without knowing about modules.
     var selectDevice: ((AudioOutputDevice) -> Void)?
     var requestAccessibility: (() -> Void)?
+    var addFiles: (([URL]) -> Void)?
+    var runTransform: ((TransformAction, ShelfItem) -> Void)?
+    var removeShelfItem: ((ShelfItem) -> Void)?
+    var clearShelf: (() -> Void)?
     /// Called when the panel expands, so permission state can be re-checked
     /// without polling for it.
     var onExpand: (() -> Void)?
 
     private var cancellables = Set<AnyCancellable>()
+    private var collapseWork: DispatchWorkItem?
     private static let collapsedSize = CGSize(width: 190, height: 30)
 
-    init(audio: AudioOutputStore, hud: HUDStore) {
+    init(audio: AudioOutputStore, hud: HUDStore, shelf: ShelfObservable) {
         self.audio = audio
         self.hud = hud
+        self.shelf = shelf
         self.size = Self.collapsedSize
 
         // The expanded panel fits whatever is actually in it: the real device
@@ -38,16 +45,47 @@ final class PillViewModel: ObservableObject {
                 guard presentation == .expanded else { return Self.collapsedSize }
                 let rows = max(state.devices.count, 1)
                 let permissionRow: CGFloat = replacing ? 0 : 34
-                return CGSize(width: 320, height: 52 + CGFloat(rows) * 30 + permissionRow)
+                // 122 covers padding, both section labels, and the 50pt shelf strip.
+                return CGSize(width: 360, height: 122 + CGFloat(rows) * 30 + permissionRow)
             }
             .removeDuplicates()
             .assign(to: \.size, on: self)
             .store(in: &cancellables)
     }
 
+    /// Collapse is delayed; expand is immediate.
+    ///
+    /// Resizing the panel makes AppKit rebuild the hosting view's tracking area,
+    /// which emits a spurious exit-then-enter pair. Acting on that exit directly
+    /// made the pill oscillate between sizes on every hover. A short grace
+    /// period absorbs it, and doubles as forgiveness for the pointer clipping a
+    /// corner on its way to a control.
+    private static let collapseGrace: TimeInterval = 0.18
+
     func setHovered(_ hovered: Bool) {
-        presentation = hovered ? .expanded : .collapsed
-        if hovered { onExpand?() }
+        // Debug level: this fires constantly, so it must not spam the log.
+        Log.activity.debug("hover=\(hovered, privacy: .public)")
+        collapseWork?.cancel()
+        collapseWork = nil
+
+        guard hovered else {
+            let work = DispatchWorkItem { [weak self] in
+                Log.activity.debug("collapse committed")
+                self?.presentation = .collapsed
+            }
+            collapseWork = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.collapseGrace, execute: work)
+            return
+        }
+
+        presentation = .expanded
+        onExpand?()
+    }
+
+    /// Dragging files over the collapsed pill opens it, so there is somewhere to
+    /// drop them without having to hover first and drag second.
+    func setDragTargeted(_ targeted: Bool) {
+        if targeted { presentation = .expanded }
     }
 
     func setActivity(_ activity: Activity?) {

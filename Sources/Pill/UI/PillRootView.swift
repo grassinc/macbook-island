@@ -5,6 +5,7 @@ struct PillRootView: View {
     @ObservedObject var model: PillViewModel
     @ObservedObject var audio: AudioOutputStore
     @ObservedObject var hud: HUDStore
+    @ObservedObject var shelf: ShelfObservable
 
     var body: some View {
         ZStack {
@@ -17,6 +18,28 @@ struct PillRootView: View {
         .animation(.easeInOut(duration: 0.18), value: model.activity)
         .contentShape(shape)
         .onHover { model.setHovered($0) }
+        .onDrop(of: [.fileURL], isTargeted: Binding(
+            get: { shelf.isDropTargeted },
+            set: { targeted in
+                shelf.isDropTargeted = targeted
+                model.setDragTargeted(targeted)
+            }
+        )) { providers in
+            load(providers)
+            return true
+        }
+    }
+
+    /// File URLs arrive as data representations; loading is async, so hop back
+    /// to the main actor before touching the shelf.
+    private func load(_ providers: [NSItemProvider]) {
+        for provider in providers {
+            _ = provider.loadDataRepresentation(for: .fileURL) { data, _ in
+                guard let data,
+                      let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
+                Task { @MainActor in model.addFiles?([url]) }
+            }
+        }
     }
 
     private var shape: some InsettableShape {
@@ -114,6 +137,11 @@ struct PillRootView: View {
                     }
                 }
             }
+
+            ShelfStrip(shelf: shelf,
+                       onTransform: { action, item in model.runTransform?(action, item) },
+                       onRemove: { model.removeShelfItem?($0) },
+                       onClear: { model.clearShelf?() })
 
             // Shown only while it is actionable. SIP blocks disabling Apple's
             // OSD, so consuming the keys is the only way to replace it, and
