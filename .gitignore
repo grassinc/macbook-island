@@ -3,3 +3,5 @@
 build/
 Pill.app/
 .DS_Store
+signing/*.key
+signing/*.p12

@@ -23,8 +23,21 @@ cp "$BIN" "$APP/Contents/MacOS/Pill"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
-echo "==> ad-hoc signing (stable identifier)"
-codesign --force --sign - --identifier com.pill.app --timestamp=none "$APP"
+# Sign with the local certificate when it exists, falling back to ad-hoc.
+#
+# This matters for more than tidiness: an ad-hoc signature makes the app's TCC
+# identity its cdhash, which changes on EVERY build, silently invalidating the
+# Accessibility grant while the app still appears ticked in System Settings.
+# Signing with a stable certificate keys the identity to the certificate
+# instead, so the grant survives rebuilds.
+IDENTITY="Pill Local Dev"
+if security find-identity -v -p codesigning 2>/dev/null | grep -q "$IDENTITY"; then
+    echo "==> signing with '$IDENTITY' (stable TCC identity)"
+    codesign --force --sign "$IDENTITY" --identifier com.pill.app --timestamp=none --options runtime "$APP"
+else
+    echo "==> ad-hoc signing (no local certificate; TCC grants will not survive rebuilds)"
+    codesign --force --sign - --identifier com.pill.app --timestamp=none "$APP"
+fi
 codesign --verify --verbose=2 "$APP" 2>&1 | sed 's/^/    /'
 
 echo "==> built $APP"
