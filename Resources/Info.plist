@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>                  <string>Pill</string>
+    <key>CFBundleDisplayName</key>           <string>Pill</string>
+    <key>CFBundleIdentifier</key>            <string>com.pill.app</string>
+    <key>CFBundleExecutable</key>            <string>Pill</string>
+    <key>CFBundlePackageType</key>           <string>APPL</string>
+    <key>CFBundleShortVersionString</key>    <string>0.1.0</string>
+    <key>CFBundleVersion</key>               <string>1</string>
+    <key>LSMinimumSystemVersion</key>        <string>26.0</string>
+
+    <!-- Agent app: no Dock tile, no Cmd-Tab entry. Paired with
+         setActivationPolicy(.accessory) at runtime as belt and braces. -->
+    <key>LSUIElement</key>                   <true/>
+
+    <!-- Shown in the TCC prompt when the screenshot tray first reads the
+         capture directory. Must say something true and specific. -->
+    <key>NSDesktopFolderUsageDescription</key>
+    <string>Pill watches your screenshot folder so new screenshots appear in the pill as draggable thumbnails.</string>
+</dict>
+</plist>

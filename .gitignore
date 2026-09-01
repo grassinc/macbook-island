@@ -1,0 +1,5 @@
+.build/
+*.o
+build/
+Pill.app/
+.DS_Store
