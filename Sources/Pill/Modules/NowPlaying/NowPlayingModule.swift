@@ -81,13 +81,20 @@ final class NowPlayingModule: PillModule {
     /// nobody can see does not need to move. Told by the window controller.
     func setPanelOpen(_ open: Bool) {
         panelIsOpen = open
-        open ? refreshAndStartTicker() : stopTicker()
+        open ? refreshPlayback() : stopTicker()
     }
 
-    private func refreshAndStartTicker() {
-        refreshPlayback()
-        guard store.playback?.isPlaying == true else { return }
-        stopTicker()
+    /// Runs only while the panel is open and something is actually playing.
+    ///
+    /// This used to be started right after kicking off a refresh, and guarded on
+    /// `store.playback` — which the refresh had not written yet, because it is
+    /// asynchronous. The guard therefore read the *previous* track's state, so
+    /// on the first open after a track started the ticker never began and the
+    /// scrubber sat frozen. It is now started from the refresh's completion,
+    /// where the value it depends on actually exists.
+    private func startTickerIfNeeded() {
+        guard panelIsOpen, store.playback?.isPlaying == true else { stopTicker(); return }
+        guard positionTicker == nil else { return }
         let ticker = DispatchSource.makeTimerSource(queue: .main)
         ticker.schedule(deadline: .now() + 1, repeating: 1.0, leeway: .milliseconds(200))
         ticker.setEventHandler { [weak self] in
@@ -119,31 +126,54 @@ final class NowPlayingModule: PillModule {
         refreshPlayback()
     }
 
-    private func refreshPlayback() {
+    /// Reads the player, retrying a few times if it has nothing to say yet.
+    ///
+    /// A relaunched Spotify starts answering Apple events before it has a track
+    /// loaded, so the read triggered by CoreAudio noticing its output lands too
+    /// early and comes back empty. That was the only read taken: nothing retried
+    /// it, and nothing logged it, so after quitting and reopening Spotify the
+    /// pill sat on the plain app-name row with no player until the process id
+    /// changed again.
+    private func refreshPlayback(retriesLeft: Int = 4) {
         lastFetchAt = Date()
         guard store.source?.bundleID == SpotifyController.bundleID else {
             store.playback = nil
+            stopTicker()
             return
         }
+        let expected = store.source?.pid
         Task.detached(priority: .utility) {
             let playback = SpotifyController.playback()
             await MainActor.run {
-                self.store.playback = playback
-                if let playback {
-                    Log.activity.notice("playback \(playback.title, privacy: .public) pos=\(playback.positionText, privacy: .public)/\(playback.durationText, privacy: .public) playing=\(playback.isPlaying, privacy: .public) art=\(playback.artworkURL != nil, privacy: .public)")
-                    self.store.track = "\(playback.title) — \(playback.artist)"
-                    // A paused track is not an activity. Holding the collapsed
-                    // pill while nothing plays is the same mistake as latching
-                    // on a silent browser.
-                    if playback.isPlaying {
-                        self.publish(app: self.store.source?.name ?? "Spotify",
-                                     track: self.store.track, verified: true)
-                    } else {
-                        self.context?.retract(id: Self.identifier)
+                // Another app may have taken the output while this was in flight.
+                guard self.store.source?.pid == expected else { return }
+
+                guard let playback else {
+                    Log.activity.notice("spotify has no track yet, retries left \(retriesLeft, privacy: .public)")
+                    guard retriesLeft > 0 else {
+                        self.store.playback = nil
+                        self.stopTicker()
+                        return
                     }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        MainActor.assumeIsolated { self.refreshPlayback(retriesLeft: retriesLeft - 1) }
+                    }
+                    return
                 }
-                // Stop ticking if playback paused while the panel is open.
-                if self.panelIsOpen, playback?.isPlaying != true { self.stopTicker() }
+
+                self.store.playback = playback
+                Log.activity.notice("playback \(playback.title, privacy: .public) pos=\(playback.positionText, privacy: .public)/\(playback.durationText, privacy: .public) playing=\(playback.isPlaying, privacy: .public) art=\(playback.artworkURL != nil, privacy: .public)")
+                self.store.track = "\(playback.title) — \(playback.artist)"
+                // A paused track is not an activity. Holding the collapsed pill
+                // while nothing plays is the same mistake as latching on a
+                // silent browser.
+                if playback.isPlaying {
+                    self.publish(app: self.store.source?.name ?? "Spotify",
+                                 track: self.store.track, verified: true)
+                } else {
+                    self.context?.retract(id: Self.identifier)
+                }
+                self.startTickerIfNeeded()
             }
         }
     }
@@ -168,7 +198,6 @@ final class NowPlayingModule: PillModule {
 
         if primary.bundleID == SpotifyController.bundleID {
             refreshPlayback()
-            if panelIsOpen { refreshAndStartTicker() }
         } else {
             store.playback = nil
             fetchTrack(for: primary)

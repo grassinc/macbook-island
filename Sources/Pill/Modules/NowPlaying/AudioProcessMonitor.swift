@@ -5,13 +5,23 @@ import PillCore
 
 /// Watches which processes are producing audio.
 ///
-/// Uses `kAudioHardwarePropertyProcessObjectList` (macOS 14.4+) plus a listener
-/// on each process's `kAudioProcessPropertyIsRunningOutput`. Both are public
-/// CoreAudio and need no permission, and both are notification-driven — nothing
-/// here polls.
+/// Uses `kAudioHardwarePropertyProcessObjectList` (macOS 14.4+) plus per-process
+/// listeners. Both are public CoreAudio and need no permission, and both are
+/// notification-driven — nothing here polls.
 ///
 /// Per-process listeners are re-registered whenever the process list changes,
 /// because a newly launched app arrives as a brand new audio object.
+///
+/// The transition is watched on `kAudioProcessPropertyIsRunning`, not on
+/// `kAudioProcessPropertyIsRunningOutput`, even though the latter is the value
+/// actually read. Measured on macOS 26.6: a listener on `IsRunningOutput`
+/// attaches without error and then never fires — the property flips false to
+/// true with no notification. `IsRunning` fires reliably on both edges. That is
+/// why quitting and reopening Spotify used to leave the pill blank: the new
+/// process object was created before playback began, its listener attached to
+/// a property that never notifies, and nothing noticed until some unrelated app
+/// changed the process list and forced a rescan. `IsRunning` is also true for
+/// input-only work, so it is the trigger and `IsRunningOutput` remains the test.
 @MainActor
 final class AudioProcessMonitor {
 
@@ -83,9 +93,15 @@ final class AudioProcessMonitor {
     private func rebindProcesses() {
         clearProcessListeners()
         for object in processObjects() {
-            if let removal = addListener(on: object, selector: kAudioProcessPropertyIsRunningOutput,
-                                         handler: { [weak self] in self?.emit() }) {
-                processRemovals.append(removal)
+            // Both are attached: `IsRunning` is the one that actually notifies
+            // here, and keeping `IsRunningOutput` costs a listener per process
+            // and means a system where only it works is still covered.
+            for selector in [kAudioProcessPropertyIsRunning,
+                             kAudioProcessPropertyIsRunningOutput] {
+                if let removal = addListener(on: object, selector: selector,
+                                             handler: { [weak self] in self?.emit() }) {
+                    processRemovals.append(removal)
+                }
             }
         }
         emit()
