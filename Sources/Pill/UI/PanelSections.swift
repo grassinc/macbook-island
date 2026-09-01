@@ -413,6 +413,13 @@ struct NowPlayingRow: View {
             }
         }
         .frame(height: 66)
+        // The sketch draws the player as its own box. Without one it runs
+        // straight into the shelf label and the two read as a single block.
+        .padding(7)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(.white.opacity(0.05))
+        )
         .onAppear { artwork.load(playback.artworkURL) }
         .onChange(of: playback.artworkURL) { _, url in artwork.load(url) }
     }
