@@ -4,6 +4,7 @@ import PillCore
 struct PillRootView: View {
     @ObservedObject var model: PillViewModel
     @ObservedObject var audio: AudioOutputStore
+    @ObservedObject var hud: HUDStore
 
     var body: some View {
         ZStack {
@@ -112,6 +113,30 @@ struct PillRootView: View {
                         model.selectDevice?(device)
                     }
                 }
+            }
+
+            // Shown only while it is actionable. SIP blocks disabling Apple's
+            // OSD, so consuming the keys is the only way to replace it, and
+            // that needs Accessibility.
+            if !hud.isReplacingSystemHUD {
+                Divider().overlay(.white.opacity(0.10))
+                Button { model.requestAccessibility?() } label: {
+                    HStack(spacing: 7) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.orange)
+                        Text("Replace system volume HUD")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.85))
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.45))
+                    }
+                    .padding(.horizontal, 8)
+                    .frame(height: 24)
+                }
+                .buttonStyle(.plain)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

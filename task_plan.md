@@ -18,7 +18,16 @@ with three features: HUD replacement, audio output switcher, screenshot catch tr
 - [x] P3  Window layer: PillPanel, positioning, hover tracking, fullscreen policy
 - [x] P4  Module boundary: PillModule, ModuleContext, registry
 - [x] P5  Audio output switcher module (CoreAudio, no permissions)
-- [ ] P6  HUD module (volume first; brightness/backlight behind Accessibility)
-- [ ] P7  Screenshot tray module (FSEvents + drag-out)
-- [ ] P8  Permission onboarding window
-- [ ] P9  Verification: idle CPU measurement, focus-stealing check, full manual pass
+- [x] P6  HUD volume (done). Brightness/backlight keys pass through, NOT yet handled
+- [~] P8  Permission onboarding: just-in-time Accessibility row in the panel (done);
+          full first-run window still pending
+
+## Added at owner's request 2026-09-01 (brief features 3, 5, 6)
+The shelf and the screenshot tray are the same thing wearing two hats: items with
+thumbnails you can drag out. They share one ShelfItem model rather than being
+built twice.
+- [ ] P10 ShelfItem model + ShelfStore (TDD: capacity, dedupe, ordering, expiry)
+- [ ] P11 File shelf: drag files IN (NSDraggingDestination) and OUT (NSFilePromise)
+- [ ] P12 Screenshot tray (brief #5): watch the capture dir, feed the same shelf
+- [ ] P13 Drop-to-transform (brief #6): HEIC->JPG, resize, zip, strip EXIF, ->PDF
+- [ ] P9  Verification: idle CPU, focus-stealing, full manual pass

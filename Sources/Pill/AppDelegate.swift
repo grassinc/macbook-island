@@ -29,6 +29,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         registry.register(hudModule)
         registry.activateAll()
 
+        model.requestAccessibility = {
+            MediaKeyTap.requestTrust()
+            Log.permissions.notice("accessibility prompt requested")
+        }
+        // Re-check on expand rather than polling for the grant.
+        model.onExpand = { [weak self] in
+            guard let self, !self.hudStore.isReplacingSystemHUD else { return }
+            if self.hudModule.retryKeyTap() {
+                Log.permissions.notice("key tap started after grant")
+            }
+        }
+
         controller = PillWindowController(model: model)
         controller.show()
     }

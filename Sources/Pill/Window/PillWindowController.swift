@@ -25,7 +25,7 @@ final class PillWindowController {
         let initial = NSRect(origin: .zero, size: model.size)
         self.panel = PillPanel(contentRect: initial)
 
-        let host = PillHostingView(rootView: PillRootView(model: model, audio: model.audio))
+        let host = PillHostingView(rootView: PillRootView(model: model, audio: model.audio, hud: model.hud))
         host.frame = initial
         host.autoresizingMask = [.width, .height]
         panel.contentView = host

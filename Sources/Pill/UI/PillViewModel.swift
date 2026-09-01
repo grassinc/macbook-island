@@ -18,9 +18,12 @@ final class PillViewModel: ObservableObject {
 
     /// Set by the app so the view can act without knowing about modules.
     var selectDevice: ((AudioOutputDevice) -> Void)?
+    var requestAccessibility: (() -> Void)?
+    /// Called when the panel expands, so permission state can be re-checked
+    /// without polling for it.
+    var onExpand: (() -> Void)?
 
     private var cancellables = Set<AnyCancellable>()
-
     private static let collapsedSize = CGSize(width: 190, height: 30)
 
     init(audio: AudioOutputStore, hud: HUDStore) {
@@ -28,17 +31,14 @@ final class PillViewModel: ObservableObject {
         self.hud = hud
         self.size = Self.collapsedSize
 
-        // The expanded panel has to fit however many outputs exist right now,
-        // so its height is derived rather than hard-coded.
-        Publishers.CombineLatest($presentation, audio.$state)
-            .map { presentation, state -> CGSize in
-                switch presentation {
-                case .collapsed:
-                    return Self.collapsedSize
-                case .expanded:
-                    let rows = max(state.devices.count, 1)
-                    return CGSize(width: 320, height: 52 + CGFloat(rows) * 30)
-                }
+        // The expanded panel fits whatever is actually in it: the real device
+        // count, plus the permission row only while it is relevant.
+        Publishers.CombineLatest3($presentation, audio.$state, hud.$isReplacingSystemHUD)
+            .map { presentation, state, replacing -> CGSize in
+                guard presentation == .expanded else { return Self.collapsedSize }
+                let rows = max(state.devices.count, 1)
+                let permissionRow: CGFloat = replacing ? 0 : 34
+                return CGSize(width: 320, height: 52 + CGFloat(rows) * 30 + permissionRow)
             }
             .removeDuplicates()
             .assign(to: \.size, on: self)
@@ -47,6 +47,7 @@ final class PillViewModel: ObservableObject {
 
     func setHovered(_ hovered: Bool) {
         presentation = hovered ? .expanded : .collapsed
+        if hovered { onExpand?() }
     }
 
     func setActivity(_ activity: Activity?) {

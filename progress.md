@@ -35,3 +35,13 @@
   second device is paired; end-to-end route-change announcement is UNVERIFIED
   for that reason.
 - 44 checks green.
+- P6 DONE (volume). Live: 6%->25% gave showing=hud, level=0.25, then
+  showing=nothing 1.645s later. accessibility=false at launch, so the pill
+  currently MIRRORS volume while Apple's OSD also shows; the panel now offers a
+  just-in-time "Replace system volume HUD" row that requests Accessibility and
+  retries the tap on expand (no polling). Expanded panel measured 320x116,
+  matching 52 + 1 device*30 + 34 permission row.
+- Brightness/keyboard-backlight keys are deliberately NOT consumed yet, so they
+  keep working natively until implemented.
+- Owner asked for the file shelf and transform options (brief 3/5/6); planned as
+  P10-P13 on a shared ShelfItem model.
