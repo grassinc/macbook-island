@@ -2,13 +2,13 @@ import Foundation
 
 /// Where a shelf item came from. Only affects presentation — a screenshot
 /// announces itself in the pill, a dropped file does not.
-public enum ShelfItemSource: Sendable, Equatable {
+public enum ShelfItemSource: String, Sendable, Equatable, Codable {
     case dropped
     case screenshot
 }
 
 /// A file parked in the shelf.
-public struct ShelfItem: Identifiable, Equatable, Sendable {
+public struct ShelfItem: Identifiable, Equatable, Sendable, Codable {
     /// The file path. Identity is the path so the same file cannot occupy two
     /// tiles, however it arrived.
     public let id: String
@@ -54,6 +54,16 @@ public final class ShelfStore {
             items.removeLast(items.count - capacity)
         }
         onChange?()
+    }
+
+    /// Reinstates a saved shelf at launch.
+    ///
+    /// Not a mutation from the user's point of view, so it deliberately does not
+    /// fire `onChange` — doing so would write the file straight back out on every
+    /// launch for no reason. Capacity still applies, in case it was lowered
+    /// since the file was written.
+    public func restore(_ saved: [ShelfItem]) {
+        items = Array(saved.prefix(capacity))
     }
 
     public func remove(id: String) {

@@ -112,4 +112,35 @@ func runShelfTests(_ r: TestRunner) {
         shelf.pruneMissing { _ in false }
         r.expectEqual(changes, 1, "a removal notifies once")
     }
+
+    // Parked files must survive quitting Pill and rebooting the Mac. Without
+    // this the shelf is a scratchpad that silently empties overnight.
+    r.test("shelf items survive an encode/decode round trip") { r in
+        let original = [item("/tmp/a.pdf", t0), item("/tmp/shot.png", at(3), source: .screenshot)]
+        guard let data = try? JSONEncoder().encode(original),
+              let restored = try? JSONDecoder().decode([ShelfItem].self, from: data) else {
+            r.expect(false, "round trip threw"); return
+        }
+        r.expectEqual(restored.count, 2, "both items came back")
+        r.expectEqual(restored.first?.name, "a.pdf", "url survived")
+        r.expect(restored.last?.source == .screenshot, "source survived")
+        r.expectEqual(restored.first?.id, original.first?.id, "identity is stable across a restart")
+    }
+
+    r.test("a restored shelf keeps newest-first order and honours capacity") { r in
+        let shelf = ShelfStore(capacity: 2)
+        shelf.restore([item("/tmp/1.txt", t0), item("/tmp/2.txt", at(1)), item("/tmp/3.txt", at(2))])
+        r.expectEqual(shelf.items.count, 2, "capacity applied on restore, not just on add")
+        r.expectEqual(shelf.items.first?.name, "1.txt", "restore preserves the given order")
+    }
+
+    r.test("restoring does not fire onChange") { r in
+        // Restore happens at launch; treating it as a mutation would write the
+        // file straight back out for no reason.
+        let shelf = ShelfStore(capacity: 5)
+        var changes = 0
+        shelf.onChange = { changes += 1 }
+        shelf.restore([item("/tmp/a.txt", t0)])
+        r.expectEqual(changes, 0, "restore is not a user-visible change")
+    }
 }

@@ -20,11 +20,16 @@ public enum ActivityPriority: Int, Comparable, Sendable {
 
 /// What sort of thing an activity is. The app layer maps this to a view, which
 /// is how PillCore avoids importing SwiftUI.
-public enum ActivityKind: Sendable, Equatable {
+public enum ActivityKind: Sendable, Equatable, Hashable {
     case generic
     case audioOutput
     case hud
     case screenshot
+    case calendar
+    case timer
+    case thermal
+    case battery
+    case email
 }
 
 /// One thing the pill can show. Modules publish these; they never touch the window.

@@ -42,9 +42,17 @@ final class ShelfModule: PillModule {
     func activate(context: ModuleContext) {
         self.context = context
 
+        // Restore before wiring onChange, so reinstating the saved shelf does
+        // not immediately write it back out.
+        store.restore(ShelfPersistence.load())
+        pruneMissing()
+        observable.items = store.items
+        Log.activity.notice("shelf restored \(self.store.items.count, privacy: .public) item(s)")
+
         store.onChange = { [weak self] in
             guard let self else { return }
             self.observable.items = self.store.items
+            ShelfPersistence.save(self.store.items)
         }
 
         let watcher = ScreenshotWatcher { [weak self] urls in
