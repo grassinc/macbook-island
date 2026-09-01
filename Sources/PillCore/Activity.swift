@@ -37,6 +37,9 @@ public struct Activity: Sendable, Equatable, Identifiable {
     public let startedAt: Date
     /// When this stops being shown. `nil` means it stays until retracted.
     public let expiresAt: Date?
+    /// Meter fill for HUD-style activities, always within 0...1. `nil` means
+    /// this activity draws no meter.
+    public let progress: Double?
 
     public init(id: String,
                 kind: ActivityKind = .generic,
@@ -44,7 +47,8 @@ public struct Activity: Sendable, Equatable, Identifiable {
                 subtitle: String? = nil,
                 priority: ActivityPriority,
                 startedAt: Date,
-                expiresAt: Date? = nil) {
+                expiresAt: Date? = nil,
+                progress: Double? = nil) {
         self.id = id
         self.kind = kind
         self.title = title
@@ -52,6 +56,9 @@ public struct Activity: Sendable, Equatable, Identifiable {
         self.priority = priority
         self.startedAt = startedAt
         self.expiresAt = expiresAt
+        // Clamped on the way in: a device can report slightly outside the range
+        // and an unclamped meter overflows its track.
+        self.progress = progress.map { Swift.min(Swift.max($0, 0), 1) }
     }
 
     public func isLive(at now: Date) -> Bool {

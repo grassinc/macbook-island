@@ -25,7 +25,9 @@ final class ActivityPresenter {
 
     func refresh() {
         let now = Date()
-        model.setActivity(coordinator.selection(at: now))
+        let selected = coordinator.selection(at: now)
+        model.setActivity(selected)
+        Log.activity.notice("showing=\(selected?.id ?? "nothing", privacy: .public)")
 
         expiryWork?.cancel()
         expiryWork = nil

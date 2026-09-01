@@ -14,6 +14,7 @@ final class PillViewModel: ObservableObject {
     @Published private(set) var size: CGSize = .zero
 
     let audio: AudioOutputStore
+    let hud: HUDStore
 
     /// Set by the app so the view can act without knowing about modules.
     var selectDevice: ((AudioOutputDevice) -> Void)?
@@ -22,8 +23,9 @@ final class PillViewModel: ObservableObject {
 
     private static let collapsedSize = CGSize(width: 190, height: 30)
 
-    init(audio: AudioOutputStore) {
+    init(audio: AudioOutputStore, hud: HUDStore) {
         self.audio = audio
+        self.hud = hud
         self.size = Self.collapsedSize
 
         // The expanded panel has to fit however many outputs exist right now,

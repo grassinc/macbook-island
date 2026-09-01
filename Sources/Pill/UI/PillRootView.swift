@@ -35,15 +35,22 @@ struct PillRootView: View {
     @ViewBuilder
     private var collapsed: some View {
         if let activity = model.activity {
-            HStack(spacing: 7) {
+            HStack(spacing: 8) {
                 Image(systemName: icon(for: activity))
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.white)
-                Text(activity.title.isEmpty ? activity.id : activity.title)
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                Spacer(minLength: 0)
+                    .frame(width: 14)
+
+                if let progress = activity.progress {
+                    // A meter reads faster than a number at this size.
+                    Meter(value: progress)
+                } else {
+                    Text(activity.title.isEmpty ? activity.id : activity.title)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                }
             }
             .transition(.opacity)
         } else {
@@ -60,10 +67,19 @@ struct PillRootView: View {
     private func icon(for activity: Activity) -> String {
         switch activity.kind {
         case .audioOutput: return audioIcon
-        case .hud:         return "speaker.wave.2.fill"
+        case .hud:         return volumeIcon(for: activity)
         case .screenshot:  return "camera.viewfinder"
         case .generic:     return "circle.fill"
         }
+    }
+
+    /// Mirrors the system's own stepping so the icon reads as familiar.
+    private func volumeIcon(for activity: Activity) -> String {
+        guard let level = activity.progress else { return "speaker.wave.2.fill" }
+        if activity.title == "Muted" || level <= 0 { return "speaker.slash.fill" }
+        if level < 0.34 { return "speaker.wave.1.fill" }
+        if level < 0.67 { return "speaker.wave.2.fill" }
+        return "speaker.wave.3.fill"
     }
 
     private var audioIcon: String {
@@ -146,5 +162,25 @@ private struct DeviceRow: View {
         case .virtual: "waveform"
         case .unknown: "speaker.wave.2"
         }
+    }
+}
+
+
+/// A slim capsule meter. Fill is drawn as an overlay mask so the track stays a
+/// constant width while the value animates.
+private struct Meter: View {
+    let value: Double
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule().fill(.white.opacity(0.20))
+                Capsule()
+                    .fill(.white)
+                    .frame(width: max(3, geometry.size.width * value))
+            }
+        }
+        .frame(height: 4)
+        .animation(.easeOut(duration: 0.16), value: value)
     }
 }
