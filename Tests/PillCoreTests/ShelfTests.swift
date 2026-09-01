@@ -85,4 +85,31 @@ func runShelfTests(_ r: TestRunner) {
         shelf.remove(id: item("/tmp/a.txt", t0).id)
         r.expectEqual(changes, 2, "add and remove each notify")
     }
+
+    // A parked file can be moved, renamed, or deleted behind our back. A tile
+    // pointing at nothing would fail silently when dragged into another app,
+    // which is the worst way to find out.
+    r.test("items whose files have vanished are pruned") { r in
+        let shelf = ShelfStore(capacity: 10)
+        shelf.add(item("/tmp/present.txt", t0))
+        shelf.add(item("/tmp/gone.txt", at(1)))
+
+        shelf.pruneMissing { url in url.path == "/tmp/present.txt" }
+
+        r.expectEqual(shelf.items.count, 1, "the vanished file is dropped")
+        r.expectEqual(shelf.items.first?.name, "present.txt", "the surviving file is kept")
+    }
+
+    r.test("pruning notifies only when something actually went") { r in
+        let shelf = ShelfStore(capacity: 10)
+        shelf.add(item("/tmp/present.txt", t0))
+        var changes = 0
+        shelf.onChange = { changes += 1 }
+
+        shelf.pruneMissing { _ in true }
+        r.expectEqual(changes, 0, "nothing missing means no notification")
+
+        shelf.pruneMissing { _ in false }
+        r.expectEqual(changes, 1, "a removal notifies once")
+    }
 }

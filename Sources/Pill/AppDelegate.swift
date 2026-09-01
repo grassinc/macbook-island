@@ -31,6 +31,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.runTransform = { [weak self] action, item in self?.shelfModule.runTransform(action, on: item) }
         model.removeShelfItem = { [weak self] item in self?.shelfModule.remove(item) }
         model.clearShelf = { [weak self] in self?.shelfModule.clear() }
+        model.beginShelfDrag = { [weak self] in self?.shelfModule.beginDrag() }
+        shelfModule.onDragEnded = { [weak self] in self?.model.endShelfDrag() }
 
         registry = ModuleRegistry(coordinator: coordinator)
         registry.register(audioModule)

@@ -7,6 +7,10 @@ final class ShelfObservable: ObservableObject {
     @Published fileprivate(set) var items: [ShelfItem] = []
     /// Set while a drag is hovering the panel, so the drop zone can light up.
     @Published var isDropTargeted = false
+    /// Set while the user is dragging an item OUT of the shelf. The panel must
+    /// not collapse during this: collapsing removes the shelf from the view
+    /// tree, which pulls the drag source out from under an in-flight drag.
+    @Published var isDraggingOut = false
     /// Last transform failure, surfaced in the panel rather than swallowed.
     @Published fileprivate(set) var lastError: String?
 }
@@ -23,6 +27,10 @@ final class ShelfModule: PillModule {
     private let observable: ShelfObservable
     private var context: ModuleContext?
     private var watcher: ScreenshotWatcher?
+    private let dragEnd = DragEndMonitor()
+
+    /// Called when a drag-out finishes, so the panel can re-evaluate collapsing.
+    var onDragEnded: (() -> Void)?
 
     /// How long a newly caught screenshot announces itself in the collapsed pill.
     private let announceFor: TimeInterval = 4
@@ -48,6 +56,7 @@ final class ShelfModule: PillModule {
     }
 
     func deactivate() {
+        dragEnd.stop()
         watcher?.stop()
         watcher = nil
         store.onChange = nil
@@ -82,6 +91,29 @@ final class ShelfModule: PillModule {
             expiresAt: now.addingTimeInterval(announceFor)
         ))
         Log.activity.notice("caught screenshot \(newest.lastPathComponent, privacy: .public)")
+    }
+
+    /// Called when the panel opens, so the user never sees a tile for a file
+    /// that is no longer there.
+    func pruneMissing() {
+        store.pruneMissing { FileManager.default.fileExists(atPath: $0.path) }
+    }
+
+    // MARK: - Dragging out
+
+    /// The mouse-up monitor runs only for the duration of a drag, so the idle
+    /// path keeps no event monitors installed.
+    func beginDrag() {
+        observable.isDraggingOut = true
+        dragEnd.onDragEnd = { [weak self] in
+            guard let self, self.observable.isDraggingOut else { return }
+            self.observable.isDraggingOut = false
+            self.dragEnd.stop()
+            Log.activity.debug("drag-out finished")
+            self.onDragEnded?()
+        }
+        dragEnd.start()
+        Log.activity.debug("drag-out started")
     }
 
     // MARK: - Acting on items

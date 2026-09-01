@@ -52,3 +52,14 @@
 - Idle CPU scare resolved: a reading of ~10% was launch-time work. Sampler showed
   all threads in semaphore_wait_trap, and a settled 20s re-measure gave 0.00%.
   113 checks green. RSS ~49 MB.
+
+- Drag-OUT hardening for the park-then-send flow (drag a shelf item into
+  WhatsApp/Mail/Finder):
+  * Panel no longer collapses mid-drag. Dragging out means the pointer leaves
+    the pill by definition, and collapsing tore the drag source out of the view
+    tree. DragEndMonitor watches leftMouseUp (global + local; mouse events need
+    no Accessibility) and only runs for the duration of a drag.
+  * Shelf holds references, not copies, so tiles are pruned on panel open when
+    the underlying file has been moved or deleted. Otherwise a dead tile fails
+    silently at the moment of dropping into another app.
+- KNOWN GAP: the shelf does NOT persist across restarts; quitting Pill empties it.

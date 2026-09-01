@@ -141,7 +141,8 @@ struct PillRootView: View {
             ShelfStrip(shelf: shelf,
                        onTransform: { action, item in model.runTransform?(action, item) },
                        onRemove: { model.removeShelfItem?($0) },
-                       onClear: { model.clearShelf?() })
+                       onClear: { model.clearShelf?() },
+                       onDragStart: { model.beginShelfDrag?() })
 
             // Shown only while it is actionable. SIP blocks disabling Apple's
             // OSD, so consuming the keys is the only way to replace it, and

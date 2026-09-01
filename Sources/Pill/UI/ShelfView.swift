@@ -40,6 +40,7 @@ struct ShelfStrip: View {
     let onTransform: (TransformAction, ShelfItem) -> Void
     let onRemove: (ShelfItem) -> Void
     let onClear: () -> Void
+    let onDragStart: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -72,7 +73,8 @@ struct ShelfStrip: View {
                         ForEach(shelf.items) { item in
                             ShelfTile(item: item,
                                       onTransform: { onTransform($0, item) },
-                                      onRemove: { onRemove(item) })
+                                      onRemove: { onRemove(item) },
+                                      onDragStart: onDragStart)
                         }
                     }
                 }
@@ -98,6 +100,7 @@ private struct ShelfTile: View {
     let item: ShelfItem
     let onTransform: (TransformAction) -> Void
     let onRemove: () -> Void
+    let onDragStart: () -> Void
 
     @State private var hovering = false
 
@@ -132,8 +135,13 @@ private struct ShelfTile: View {
             }
         }
         .onHover { hovering = $0 }
-        // Drag straight back out to any app.
-        .onDrag { NSItemProvider(contentsOf: item.url) ?? NSItemProvider() }
+        // Drag straight back out to any app: Finder, Mail, WhatsApp, anything
+        // that accepts a file. The provider hands over the file URL, which is
+        // what those apps expect for an attachment.
+        .onDrag {
+            onDragStart()
+            return NSItemProvider(contentsOf: item.url) ?? NSItemProvider()
+        }
         .contextMenu {
             ForEach(TransformAction.available(for: item), id: \.self) { action in
                 Button {

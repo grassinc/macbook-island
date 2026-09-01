@@ -24,6 +24,7 @@ final class PillViewModel: ObservableObject {
     var runTransform: ((TransformAction, ShelfItem) -> Void)?
     var removeShelfItem: ((ShelfItem) -> Void)?
     var clearShelf: (() -> Void)?
+    var beginShelfDrag: (() -> Void)?
     /// Called when the panel expands, so permission state can be re-checked
     /// without polling for it.
     var onExpand: (() -> Void)?
@@ -70,8 +71,16 @@ final class PillViewModel: ObservableObject {
 
         guard hovered else {
             let work = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                // Dragging a file out means the pointer leaves the pill by
+                // definition. Collapsing then would destroy the drag source
+                // mid-flight, so stay open until the drag finishes.
+                guard !self.shelf.isDraggingOut else {
+                    Log.activity.debug("collapse deferred: drag in flight")
+                    return
+                }
                 Log.activity.debug("collapse committed")
-                self?.presentation = .collapsed
+                self.presentation = .collapsed
             }
             collapseWork = work
             DispatchQueue.main.asyncAfter(deadline: .now() + Self.collapseGrace, execute: work)
@@ -80,6 +89,12 @@ final class PillViewModel: ObservableObject {
 
         presentation = .expanded
         onExpand?()
+    }
+
+    /// After a drag-out ends, re-evaluate whether to close. If the pointer came
+    /// back over the pill, the resulting hover cancels this.
+    func endShelfDrag() {
+        setHovered(false)
     }
 
     /// Dragging files over the collapsed pill opens it, so there is somewhere to

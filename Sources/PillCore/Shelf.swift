@@ -62,6 +62,19 @@ public final class ShelfStore {
         onChange?()
     }
 
+    /// Drops items whose files are no longer on disk.
+    ///
+    /// The shelf holds references, not copies, so a parked file can be moved or
+    /// deleted behind our back. A tile pointing at nothing fails silently when
+    /// dragged into another app, which is the worst way for the user to find
+    /// out. Existence is injected so this is testable without touching a disk.
+    public func pruneMissing(using exists: (URL) -> Bool) {
+        let survivors = items.filter { exists($0.url) }
+        guard survivors.count != items.count else { return }
+        items = survivors
+        onChange?()
+    }
+
     public func clear() {
         guard !items.isEmpty else { return }
         items.removeAll()
