@@ -31,6 +31,24 @@
 - CLT has NO XCTest and NO swift-testing. Only the private XCTestSupport stub
   exists. A test framework requires full Xcode; we use a local harness instead.
 
+## Suppressing Apple's volume OSD (verified 2026-09-01)
+- OSDUIHelper is a LaunchAgent: /System/Library/LaunchAgents/com.apple.OSDUIHelper.plist
+  -> /System/Library/CoreServices/OSDUIHelper.app. Idle state is "not running";
+  launchd starts it on demand when a volume/brightness key is pressed.
+- `launchctl bootout gui/$UID/com.apple.OSDUIHelper` FAILS:
+  "150: Operation not permitted while System Integrity Protection is engaged".
+  Disabling the agent is therefore off the table (we will not ask anyone to
+  disable SIP). The failed attempt changed nothing.
+- Consequence, and a CORRECTION to the design spec: showing volume in the pill
+  is permission-free (CoreAudio listener), but REPLACING Apple's overlay is not.
+  The only clean way to stop the OSD appearing is to intercept the media keys
+  with a CGEventTap and consume them, which needs Accessibility. Killing
+  OSDUIHelper per-event is the alternative and it races, so the OSD can flash.
+- CoreAudio volume ground truth: default device 72 exposes main-element
+  kAudioDevicePropertyVolumeScalar (read 0.0625) and Mute. Per-channel volume is
+  ABSENT on this device, so code must try main element first and fall back to
+  channels for devices that only expose those.
+
 ## Open questions
 - Does stopping OSDUIHelper require anything beyond killing it on macOS 26? Verify.
 - Confirm ad-hoc signed bundle can hold a stable TCC identity across rebuilds.

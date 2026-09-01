@@ -142,7 +142,8 @@ it**, and the UI has to be honest about what is degraded.
 
 | Capability | Permission | Without it |
 |---|---|---|
-| Volume HUD | none (CoreAudio) | full function |
+| Volume *display* | none (CoreAudio) | full function |
+| Volume HUD *replacing Apple's* | **Accessibility** (event tap) | pill shows volume, but Apple's OSD also appears (duplicate) |
 | Audio output switching | none (CoreAudio) | full function |
 | Screenshot tray | Desktop folder (TCC, on first read) | tray stays empty |
 | Brightness / keyboard-backlight HUD | **Accessibility** (`CGEventTap`) | volume HUD still works; brightness silently falls back to the system OSD |
