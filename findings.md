@@ -108,6 +108,23 @@
   audio from Zen, with no polling.
 - CLI audio (afplay) has no bundle id and is correctly filtered out.
 
+## Now-playing selection bug (found 2026-09-01)
+- Spotify appeared undetected. Root cause was NOT detection: CoreAudio reports
+  it correctly (pid=14946 outputting=true bundle=com.spotify.client). The bug
+  was the SELECTION rule -- lowest pid wins -- because a browser launched hours
+  earlier keeps an output stream open with nothing audible, and its lower pid
+  permanently outranked a music app just started.
+- Now selects the most recently STARTED source. CoreAudio does not report that,
+  so the monitor observes the false->true transition and remembers it, pruning
+  pids that disappear.
+- Verified live: "audio from Spotify [com.spotify.client]", and switching
+  between Spotify and Zen as each plays.
+- Track metadata via AppleScript works: "FE!N (feat. Playboi Carti) - Travis
+  Scott". NOTE: reading it from inside Pill needs its OWN Automation consent,
+  which prompts on first use, and `tell application "Spotify"` LAUNCHES Spotify
+  if it is not running -- so it is only ever called for an app already
+  identified as the audio source.
+
 ## Open questions
 - Does stopping OSDUIHelper require anything beyond killing it on macOS 26? Verify.
 - Confirm ad-hoc signed bundle can hold a stable TCC identity across rebuilds.

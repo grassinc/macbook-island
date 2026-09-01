@@ -1,8 +1,12 @@
 import Foundation
 @testable import PillCore
 
-private func src(_ bundle: String, pid: Int32 = 1, outputting: Bool = true, name: String = "") -> AudioSource {
-    AudioSource(pid: pid, bundleID: bundle, name: name.isEmpty ? bundle : name, isOutputting: outputting)
+private let t0 = Date(timeIntervalSinceReferenceDate: 1_000_000)
+
+private func src(_ bundle: String, pid: Int32 = 1, outputting: Bool = true,
+                 name: String = "", startedAt: Date? = nil) -> AudioSource {
+    AudioSource(pid: pid, bundleID: bundle, name: name.isEmpty ? bundle : name,
+                isOutputting: outputting, startedOutputtingAt: startedAt ?? t0)
 }
 
 func runAudioSourceTests(_ r: TestRunner) {
@@ -39,13 +43,32 @@ func runAudioSourceTests(_ r: TestRunner) {
                       "the real app is the answer")
     }
 
-    // Two things playing at once: pick one deterministically rather than
-    // flickering between them on every refresh.
-    r.test("with several apps playing the choice is stable, not arbitrary") { r in
-        let a = [src("com.spotify.client", pid: 20), src("app.zen-browser.zen", pid: 10)]
-        let b = [src("app.zen-browser.zen", pid: 10), src("com.spotify.client", pid: 20)]
-        r.expectEqual(NowPlayingSelector.primary(from: a)?.pid, NowPlayingSelector.primary(from: b)?.pid,
+    // The bug this replaces: selecting by lowest pid meant a browser started
+    // hours ago always beat Spotify, because browsers hold an output stream
+    // open even when nothing audible is playing. What the user means by "what
+    // I am listening to" is whatever most recently STARTED.
+    r.test("the most recently started source wins over a long-running one") { r in
+        let sources = [
+            src("app.zen-browser.zen", pid: 675, startedAt: t0),
+            src("com.spotify.client", pid: 14946, startedAt: t0.addingTimeInterval(3600)),
+        ]
+        r.expectEqual(NowPlayingSelector.primary(from: sources)?.bundleID, "com.spotify.client",
+                      "Spotify started later, so it is what you are listening to")
+    }
+
+    r.test("list order still cannot change the answer") { r in
+        let a = [src("com.spotify.client", pid: 20, startedAt: t0.addingTimeInterval(10)),
+                 src("app.zen-browser.zen", pid: 10, startedAt: t0)]
+        r.expectEqual(NowPlayingSelector.primary(from: a)?.pid,
+                      NowPlayingSelector.primary(from: a.reversed())?.pid,
                       "order of the list must not change the answer")
+    }
+
+    r.test("identical start times fall back to a stable tiebreak") { r in
+        let a = [src("com.spotify.client", pid: 20, startedAt: t0), src("app.zen-browser.zen", pid: 10, startedAt: t0)]
+        r.expectEqual(NowPlayingSelector.primary(from: a)?.pid,
+                      NowPlayingSelector.primary(from: a.reversed())?.pid,
+                      "ties do not flicker")
     }
 
     r.test("nothing playing means nothing to show") { r in

@@ -20,6 +20,11 @@ final class AudioProcessMonitor {
     private let system = AudioObjectID(kAudioObjectSystemObject)
     private var listRemoval: (() -> Void)?
     private var processRemovals: [() -> Void] = []
+    /// When each pid last STARTED producing audio. CoreAudio reports only the
+    /// current boolean, so the transition has to be observed and remembered —
+    /// it is what distinguishes a track just started from a browser stream that
+    /// has been open since this morning.
+    private var startedOutputting: [pid_t: Date] = [:]
 
     private func address(_ selector: AudioObjectPropertySelector) -> AudioObjectPropertyAddress {
         AudioObjectPropertyAddress(mSelector: selector,
@@ -104,15 +109,34 @@ final class AudioProcessMonitor {
     }
 
     func currentSources() -> [AudioSource] {
-        processObjects().compactMap { object in
+        let now = Date()
+        var live: Set<pid_t> = []
+
+        let sources: [AudioSource] = processObjects().compactMap { object in
             guard let pid = pid(of: object) else { return nil }
+            live.insert(pid)
+
             let bundleID = string(object, kAudioProcessPropertyBundleID) ?? ""
             let running = bool(object, kAudioProcessPropertyIsRunningOutput) ?? false
+
+            if running {
+                // Record the moment it started; leave it alone while it continues.
+                if startedOutputting[pid] == nil { startedOutputting[pid] = now }
+            } else {
+                startedOutputting[pid] = nil
+            }
+
             let name = NSRunningApplication(processIdentifier: pid)?.localizedName
                 ?? bundleID.components(separatedBy: ".").last
                 ?? bundleID
-            return AudioSource(pid: pid, bundleID: bundleID, name: name, isOutputting: running)
+            return AudioSource(pid: pid, bundleID: bundleID, name: name,
+                               isOutputting: running,
+                               startedOutputtingAt: startedOutputting[pid] ?? now)
         }
+
+        // Forget processes that have gone away, so the map cannot grow forever.
+        startedOutputting = startedOutputting.filter { live.contains($0.key) }
+        return sources
     }
 
     private func pid(of object: AudioObjectID) -> pid_t? {

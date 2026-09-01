@@ -6,14 +6,19 @@ public struct AudioSource: Equatable, Sendable, Identifiable {
     public let bundleID: String
     public let name: String
     public let isOutputting: Bool
+    /// When this process was first observed producing audio. CoreAudio does not
+    /// report this, so the monitor records it on the transition to outputting.
+    public let startedOutputtingAt: Date
 
     public var id: Int32 { pid }
 
-    public init(pid: Int32, bundleID: String, name: String, isOutputting: Bool) {
+    public init(pid: Int32, bundleID: String, name: String,
+                isOutputting: Bool, startedOutputtingAt: Date) {
         self.pid = pid
         self.bundleID = bundleID
         self.name = name
         self.isOutputting = isOutputting
+        self.startedOutputtingAt = startedOutputtingAt
     }
 }
 
@@ -50,11 +55,19 @@ public enum NowPlayingSelector {
         !source.bundleID.isEmpty && !infrastructure.contains(source.bundleID)
     }
 
-    /// Lowest pid wins when several apps play at once: an arbitrary but *stable*
-    /// rule, so the pill does not flicker between them as the list reorders.
+    /// The most recently started source wins.
+    ///
+    /// Picking by lowest pid seemed stable but was wrong in practice: a browser
+    /// launched hours ago keeps an output stream open even with nothing audible,
+    /// so it permanently outranked a music app the user had just started. "What
+    /// am I listening to" means whatever began most recently.
+    ///
+    /// Pid breaks exact ties so the answer never depends on list order.
     public static func primary(from sources: [AudioSource]) -> AudioSource? {
         sources
             .filter { $0.isOutputting && isReportable($0) }
-            .min { $0.pid < $1.pid }
+            .max { left, right in
+                (left.startedOutputtingAt, left.pid) < (right.startedOutputtingAt, right.pid)
+            }
     }
 }
