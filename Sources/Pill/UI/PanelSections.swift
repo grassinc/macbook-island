@@ -260,37 +260,126 @@ struct EmailRow: View {
 }
 
 /// What is currently making sound.
+///
+/// Degrades in two steps: full transport for a player we can script, the track
+/// name for one we can only read, and the app name otherwise. Every step is
+/// truthful about what it knows.
 struct NowPlayingRow: View {
     @ObservedObject var nowPlaying: NowPlayingStore
+    @StateObject private var artwork = ArtworkLoader()
+    let onPlayPause: () -> Void
+    let onNext: () -> Void
+    let onPrevious: () -> Void
 
     var body: some View {
-        if let source = nowPlaying.source {
-            HStack(spacing: 7) {
-                Image(systemName: "waveform")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.green)
-                    .symbolEffect(.variableColor.iterative, options: .repeating)
-                if let track = nowPlaying.track {
-                    Text(track)
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                    Text(source.name)
-                        .font(.system(size: 10, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.45))
-                        .lineLimit(1)
-                } else {
-                    Text(source.name)
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                    Text("playing")
-                        .font(.system(size: 10, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.45))
-                }
-                Spacer(minLength: 0)
-            }
-            .frame(height: 22)
+        if let playback = nowPlaying.playback {
+            player(playback)
+        } else if let source = nowPlaying.source {
+            simple(source)
         }
+    }
+
+    // MARK: Full player
+
+    private func player(_ playback: MediaPlayback) -> some View {
+        HStack(spacing: 10) {
+            artworkView
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(playback.title)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                Text(playback.artist)
+                    .font(.system(size: 10, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.55))
+                    .lineLimit(1)
+
+                HStack(spacing: 12) {
+                    control("backward.fill", size: 10, action: onPrevious)
+                    control(playback.isPlaying ? "pause.fill" : "play.fill", size: 13, action: onPlayPause)
+                    control("forward.fill", size: 10, action: onNext)
+                    Spacer(minLength: 0)
+                    Text("\(playback.positionText) / \(playback.durationText)")
+                        .font(.system(size: 9, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.white.opacity(0.4))
+                }
+                .padding(.top, 1)
+
+                scrubber(playback.progress)
+            }
+        }
+        .frame(height: 62)
+        .onAppear { artwork.load(playback.artworkURL) }
+        .onChange(of: playback.artworkURL) { _, url in artwork.load(url) }
+    }
+
+    private var artworkView: some View {
+        Group {
+            if let image = artwork.image {
+                Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
+            } else {
+                // A neutral placeholder, so the layout does not jump when the
+                // download lands.
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(.white.opacity(0.10))
+                    .overlay(Image(systemName: "music.note")
+                        .font(.system(size: 16))
+                        .foregroundStyle(.white.opacity(0.35)))
+            }
+        }
+        .frame(width: 54, height: 54)
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+    }
+
+    private func scrubber(_ progress: Double) -> some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule().fill(.white.opacity(0.15))
+                Capsule().fill(.white.opacity(0.75))
+                    .frame(width: max(2, geometry.size.width * progress))
+            }
+        }
+        .frame(height: 3)
+        .animation(.linear(duration: 0.9), value: progress)
+    }
+
+    private func control(_ symbol: String, size: CGFloat, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: size, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.9))
+                .frame(width: 22, height: 18)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: Fallback
+
+    private func simple(_ source: AudioSource) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: "waveform")
+                .font(.system(size: 11))
+                .foregroundStyle(.green)
+            if let track = nowPlaying.track {
+                Text(track)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white).lineLimit(1)
+                Text(source.name)
+                    .font(.system(size: 10, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.45)).lineLimit(1)
+            } else {
+                Text(source.name)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white).lineLimit(1)
+                Text("playing")
+                    .font(.system(size: 10, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.45))
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(height: 22)
     }
 }

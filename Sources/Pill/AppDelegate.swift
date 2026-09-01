@@ -104,5 +104,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.requestCalendarAccess = { [weak self] in self?.calendarModule.requestAccess() }
         model.toggleScreenShare = { [weak self] in self?.privacyModule.toggle() }
         model.connectEmail = { [weak self] in self?.emailModule.signIn() }
+        model.mediaPlayPause = { [weak self] in self?.nowPlayingModule.playPause() }
+        model.mediaNext = { [weak self] in self?.nowPlayingModule.next() }
+        model.mediaPrevious = { [weak self] in self?.nowPlayingModule.previous() }
+        // The scrubber only needs to move while someone can see it.
+        model.onPanelOpenChanged = { [weak self] open in self?.nowPlayingModule.setPanelOpen(open) }
     }
 }

@@ -17,6 +17,12 @@
 
     <!-- Shown in the TCC prompt when the screenshot tray first reads the
          capture directory. Must say something true and specific. -->
+    <!-- Without this key macOS does not merely deny Apple events, it refuses to
+         PROMPT at all: tccd logs "Policy disallows prompt" and the request fails
+         with -1743. Verified the hard way. -->
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Pill reads the current track from Spotify and Music so it can show artwork and offer playback controls.</string>
+
     <!-- EventKit refuses to prompt without this and takes the app down with it. -->
     <key>NSCalendarsFullAccessUsageDescription</key>
     <string>Pill shows your next event and a one-click join button for video calls.</string>

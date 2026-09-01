@@ -136,3 +136,15 @@
   truth on PillViewModel.
 - Idle CPU still flat (0:00.88 -> 0:00.89 across 12s); the pointer monitor runs
   only while the panel is open.
+
+## 2026-09-01 (Spotify media player)
+- Full transport in the expanded panel: album art, title/artist, previous /
+  play-pause / next, elapsed-over-total, and a progress scrubber.
+- Two permission layers had to be solved, both found by reading tccd logs
+  rather than guessing: NSAppleEventsUsageDescription (else macOS refuses to
+  prompt at all) AND the automation entitlement under the hardened runtime.
+- Fixed a stuck-open bug found while measuring: SwiftUI reports onHover(false)
+  when the view rebuilds after a resize, and with a STATIONARY pointer no
+  corrective event ever follows, so the panel closed under the cursor. The
+  pointer is now the authority in both directions.
+- CPU with the panel open and playing: 3.0% -> 0.55%.

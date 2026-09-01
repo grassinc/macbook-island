@@ -125,6 +125,30 @@
   if it is not running -- so it is only ever called for an app already
   identified as the audio source.
 
+## Automation (Apple events) needs TWO things, not one (verified 2026-09-01)
+1. `NSAppleEventsUsageDescription` in Info.plist. Without it macOS does not just
+   deny -- it refuses to PROMPT: tccd logs "Policy disallows prompt for
+   com.pill.app" and the call fails with -1743.
+2. Under the hardened runtime (which we enable when signing with the
+   certificate), the `com.apple.security.automation.apple-events` entitlement is
+   also required: tccd logs "requires entitlement ... but it is missing".
+   Adding --entitlements to the codesign call fixed it and Spotify data flowed
+   immediately.
+
+## Spotify player (verified 2026-09-01)
+- Spotify's sdef exposes everything needed: name/artist/album/duration/
+  artwork url on `current track`, `player position`, `player state`, and the
+  commands playpause / next track / previous track.
+- duration is MILLISECONDS, player position is SECONDS.
+- AppleScript formats reals with the USER'S LOCALE: position came back as
+  "161,876998901367" here. Rounding to integer ms inside AppleScript avoids the
+  decimal separator entirely; AppleScriptNumber.parse handles it as a backstop.
+- artwork url fetches fine: http=200, 28 KB, JPEG 640x640.
+- Verified live: "playback Drowning (feat. Kodak Black) pos=1:56/3:29
+  playing=true art=true", position advancing each second.
+- Polling Spotify once a second cost ~3% CPU with the panel open. Re-reading
+  every 3s and advancing position locally between fetches brought it to ~0.55%.
+
 ## Open questions
 - Does stopping OSDUIHelper require anything beyond killing it on macOS 26? Verify.
 - Confirm ad-hoc signed bundle can hold a stable TCC identity across rebuilds.

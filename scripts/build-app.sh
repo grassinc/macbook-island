@@ -33,7 +33,8 @@ printf 'APPL????' > "$APP/Contents/PkgInfo"
 IDENTITY="Pill Local Dev"
 if security find-identity -v -p codesigning 2>/dev/null | grep -q "$IDENTITY"; then
     echo "==> signing with '$IDENTITY' (stable TCC identity)"
-    codesign --force --sign "$IDENTITY" --identifier com.pill.app --timestamp=none --options runtime "$APP"
+    codesign --force --sign "$IDENTITY" --identifier com.pill.app --timestamp=none \
+        --options runtime --entitlements Resources/Pill.entitlements "$APP"
 else
     echo "==> ad-hoc signing (no local certificate; TCC grants will not survive rebuilds)"
     codesign --force --sign - --identifier com.pill.app --timestamp=none "$APP"

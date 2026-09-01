@@ -177,7 +177,10 @@ struct PillRootView: View {
                        onClear: { model.clearShelf?() },
                        onDragStart: { model.beginShelfDrag?() })
 
-            NowPlayingRow(nowPlaying: nowPlaying)
+            NowPlayingRow(nowPlaying: nowPlaying,
+                          onPlayPause: { model.mediaPlayPause?() },
+                          onNext: { model.mediaNext?() },
+                          onPrevious: { model.mediaPrevious?() })
 
             EmailRow(email: email,
                      redacted: privacy.isScreenSharing,

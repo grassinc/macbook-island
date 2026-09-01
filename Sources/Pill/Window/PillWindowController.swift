@@ -57,7 +57,8 @@ final class PillWindowController {
         installResetHotKey()
         model.pointerIsOverPanel = { [weak self] in
             guard let self else { return false }
-            return self.panel.frame.insetBy(dx: -self.exitSlack, dy: -self.exitSlack)
+            return self.panel.frame
+                .insetBy(dx: -self.exitSlack, dy: -self.exitSlack)
                 .contains(NSEvent.mouseLocation)
         }
     }

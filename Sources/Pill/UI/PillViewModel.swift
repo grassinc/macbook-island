@@ -44,6 +44,12 @@ final class PillViewModel: ObservableObject {
     /// visibly jitters sideways.
     var pointerIsOverPanel: (() -> Bool)?
     var connectEmail: (() -> Void)?
+    var mediaPlayPause: (() -> Void)?
+    var mediaNext: (() -> Void)?
+    var mediaPrevious: (() -> Void)?
+    /// Fires when the panel opens or closes, so work that only matters while
+    /// the user is looking (the scrubber) can be started and stopped.
+    var onPanelOpenChanged: ((Bool) -> Void)?
 
     private var cancellables = Set<AnyCancellable>()
     private var collapseWork: DispatchWorkItem?
@@ -112,8 +118,18 @@ final class PillViewModel: ObservableObject {
                     Log.activity.debug("collapse deferred: drag in flight")
                     return
                 }
+                // SwiftUI also reports un-hover when the view rebuilds after a
+                // resize. With a stationary pointer no corrective event ever
+                // follows, so the panel closed under the user's cursor. The
+                // pointer is the authority in both directions; a genuine exit
+                // is caught by the window controller's pointer monitor.
+                if let inside = self.pointerIsOverPanel, inside() {
+                    Log.activity.debug("collapse ignored: pointer is still inside")
+                    return
+                }
                 Log.activity.debug("collapse committed")
                 self.presentation = .collapsed
+                self.onPanelOpenChanged?(false)
             }
             collapseWork = work
             DispatchQueue.main.asyncAfter(deadline: .now() + Self.collapseGrace, execute: work)
@@ -125,8 +141,10 @@ final class PillViewModel: ObservableObject {
             Log.activity.debug("ignoring hover: pointer is not over the panel")
             return
         }
+        let wasCollapsed = presentation == .collapsed
         presentation = .expanded
         onExpand?()
+        if wasCollapsed { onPanelOpenChanged?(true) }
     }
 
     /// After a drag-out ends, re-evaluate whether to close. If the pointer came
