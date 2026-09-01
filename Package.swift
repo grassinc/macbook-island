@@ -22,6 +22,14 @@ let package = Package(
             ]
         ),
 
-        .testTarget(name: "PillCoreTests", dependencies: ["PillCore"]),
+        // CLT ships no XCTest and no swift-testing (verified: only the private
+        // XCTestSupport stub exists). Rather than require a 15 GB Xcode install
+        // for an assertion function, the suite is a plain executable with a
+        // minimal harness. Run it with: swift run PillCoreTests
+        .executableTarget(
+            name: "PillCoreTests",
+            dependencies: ["PillCore"],
+            path: "Tests/PillCoreTests"
+        ),
     ]
 )
