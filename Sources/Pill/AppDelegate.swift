@@ -39,7 +39,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         registry.activateAll()
 
         model.requestAccessibility = {
+            // The prompt only appears the first time; opening the pane as well
+            // means the button always does something visible.
             MediaKeyTap.requestTrust()
+            AccessibilityMonitor.openSettings()
             Log.permissions.notice("accessibility prompt requested")
         }
         // Re-check on expand rather than polling for the grant.

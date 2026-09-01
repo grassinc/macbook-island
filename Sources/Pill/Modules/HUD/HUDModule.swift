@@ -26,6 +26,7 @@ final class HUDModule: PillModule {
 
     private let store: HUDStore
     private let keyTap = MediaKeyTap()
+    private let accessibility = AccessibilityMonitor()
     private var context: ModuleContext?
 
     private var device: AudioObjectID = 0
@@ -52,10 +53,25 @@ final class HUDModule: PillModule {
 
         keyTap.onKey = { [weak self] key in self?.handle(key) ?? false }
         store.isReplacingSystemHUD = keyTap.start()
+
+        // Start the tap the moment the user flips the switch in System Settings,
+        // with no relaunch and no polling.
+        accessibility.onTrustChanged = { [weak self] trusted in
+            guard let self else { return }
+            Log.permissions.notice("accessibility changed to \(trusted, privacy: .public)")
+            if trusted {
+                self.store.isReplacingSystemHUD = self.keyTap.start()
+            } else {
+                self.keyTap.stop()
+                self.store.isReplacingSystemHUD = false
+            }
+        }
+        accessibility.start()
         Log.permissions.notice("accessibility=\(MediaKeyTap.isTrusted, privacy: .public) keyTap=\(self.store.isReplacingSystemHUD, privacy: .public)")
     }
 
     func deactivate() {
+        accessibility.stop()
         keyTap.stop()
         volumeTeardown?()
         volumeTeardown = nil
@@ -125,6 +141,22 @@ final class HUDModule: PillModule {
     private func publishCurrent() {
         guard device != 0, let level = VolumeController.volume(of: device) else { return }
         publish(level: level, muted: VolumeController.isMuted(device))
+
+        // Without the tap the key reached the system, so Apple's OSD is on its
+        // way. Best-effort dismissal only: OSDUIHelper is launched on demand and
+        // draws almost immediately, so this can still flash. Retried briefly
+        // because the helper may not have appeared yet on the first attempt.
+        guard !keyTap.isRunning else { return }
+        suppressSystemOSD()
+    }
+
+    private func suppressSystemOSD() {
+        OSDSuppressor.dismiss()
+        for delay in [0.05, 0.12, 0.25] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                OSDSuppressor.dismiss()
+            }
+        }
     }
 
     private func publish(level: Double, muted: Bool) {
