@@ -168,3 +168,93 @@ struct TimerRow: View {
         .buttonStyle(.plain)
     }
 }
+
+/// Outlook mail via Graph: sign-in prompt, or the filtered unread state.
+struct EmailRow: View {
+    @ObservedObject var email: EmailStore
+    let redacted: Bool
+    let onSignIn: () -> Void
+
+    var body: some View {
+        switch email.state {
+        case .notConfigured:
+            hint("Email needs an Azure client ID — see docs/graph-setup.md", symbol: "envelope.badge.shield.half.filled")
+
+        case .signedOut:
+            Button(action: onSignIn) {
+                HStack(spacing: 6) {
+                    Image(systemName: "envelope.badge").font(.system(size: 10))
+                    Text("Connect Outlook").font(.system(size: 11, weight: .medium, design: .rounded))
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right").font(.system(size: 9, weight: .semibold))
+                }
+                .foregroundStyle(.white.opacity(0.75))
+            }
+            .buttonStyle(.plain)
+            .frame(height: 22)
+
+        case .awaitingCode(let code, _):
+            HStack(spacing: 6) {
+                Image(systemName: "key.fill").font(.system(size: 10)).foregroundStyle(.blue)
+                Text("Enter \(code)")
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.white)
+                Text("(copied)").font(.system(size: 9, design: .rounded)).foregroundStyle(.white.opacity(0.45))
+                Spacer(minLength: 0)
+            }
+            .frame(height: 22)
+
+        case .failed(let reason):
+            hint(reason, symbol: "exclamationmark.triangle.fill", tint: .orange)
+
+        case .signedIn:
+            signedIn
+        }
+    }
+
+    @ViewBuilder
+    private var signedIn: some View {
+        if let newest = email.important.first {
+            HStack(spacing: 7) {
+                Image(systemName: "envelope.fill").font(.system(size: 10)).foregroundStyle(.blue)
+                // Screen-share mode must not put a sender or subject on a projector.
+                Text(redacted ? "Message" : newest.displaySender)
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                if !redacted {
+                    Text(newest.subject)
+                        .font(.system(size: 10, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.5))
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                if email.silentUnread > 0 {
+                    Text("+\(email.silentUnread)")
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.45))
+                }
+            }
+            .frame(height: 22)
+        } else {
+            HStack(spacing: 6) {
+                Image(systemName: "envelope").font(.system(size: 10)).foregroundStyle(.white.opacity(0.4))
+                Text(email.silentUnread > 0 ? "\(email.silentUnread) unread, none for you" : "No new mail")
+                    .font(.system(size: 11, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.45))
+                Spacer(minLength: 0)
+            }
+            .frame(height: 22)
+        }
+    }
+
+    private func hint(_ text: String, symbol: String, tint: Color = .white.opacity(0.45)) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: symbol).font(.system(size: 10))
+            Text(text).font(.system(size: 10, design: .rounded)).lineLimit(1)
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(tint)
+        .frame(height: 22)
+    }
+}

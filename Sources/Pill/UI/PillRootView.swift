@@ -11,6 +11,7 @@ struct PillRootView: View {
     @ObservedObject var timer: TimerStore
     @ObservedObject var calendar: CalendarStore
     @ObservedObject var privacy: PrivacyStore
+    @ObservedObject var email: EmailStore
 
     var body: some View {
         ZStack {
@@ -27,7 +28,10 @@ struct PillRootView: View {
         } action: { height in
             model.setMeasuredHeight(height)
         }
-        .animation(.spring(response: 0.34, dampingFraction: 0.84), value: model.size)
+        // Deliberately NOT animated here. The window controller animates the
+        // panel frame; if SwiftUI animated the content too, onGeometryChange
+        // would report intermediate heights and the window would chase its own
+        // animation instead of settling.
         .animation(.easeInOut(duration: 0.18), value: model.activity)
         .contentShape(shape)
         .onHover { model.setHovered($0) }
@@ -170,6 +174,10 @@ struct PillRootView: View {
                        onRemove: { model.removeShelfItem?($0) },
                        onClear: { model.clearShelf?() },
                        onDragStart: { model.beginShelfDrag?() })
+
+            EmailRow(email: email,
+                     redacted: privacy.isScreenSharing,
+                     onSignIn: { model.connectEmail?() })
 
             CalendarRow(calendar: calendar,
                         onRequestAccess: { model.requestCalendarAccess?() },

@@ -28,7 +28,8 @@ final class PillWindowController {
         let host = PillHostingView(rootView: PillRootView(model: model, audio: model.audio, hud: model.hud,
                                      shelf: model.shelf, battery: model.battery,
                                      thermal: model.thermal, timer: model.timer,
-                                     calendar: model.calendar, privacy: model.privacy))
+                                     calendar: model.calendar, privacy: model.privacy,
+                                     email: model.email))
         host.frame = initial
         host.autoresizingMask = [.width, .height]
         panel.contentView = host

@@ -15,6 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let timerStore = TimerStore()
     private let calendarStore = CalendarStore()
     private let privacyStore = PrivacyStore()
+    private let emailStore = EmailStore()
 
     private var model: PillViewModel!
     private var registry: ModuleRegistry!
@@ -29,11 +30,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var timerModule: TimerModule!
     private var calendarModule: CalendarModule!
     private var privacyModule: PrivacyModule!
+    private var emailModule: EmailModule!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         model = PillViewModel(audio: audioStore, hud: hudStore, shelf: shelfStore,
                               thermal: thermalStore, battery: batteryStore,
-                              timer: timerStore, calendar: calendarStore, privacy: privacyStore)
+                              timer: timerStore, calendar: calendarStore, privacy: privacyStore,
+                              email: emailStore)
         presenter = ActivityPresenter(coordinator: coordinator, model: model, privacy: privacyStore)
 
         audioModule = AudioOutputModule(store: audioStore)
@@ -44,12 +47,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         timerModule = TimerModule(store: timerStore)
         calendarModule = CalendarModule(store: calendarStore)
         privacyModule = PrivacyModule(store: privacyStore)
+        emailModule = EmailModule(store: emailStore)
 
         wireActions()
 
         registry = ModuleRegistry(coordinator: coordinator)
         for module in [audioModule, hudModule, shelfModule, thermalModule,
-                       batteryModule, timerModule, calendarModule, privacyModule] as [any PillModule] {
+                       batteryModule, timerModule, calendarModule, privacyModule,
+                       emailModule] as [any PillModule] {
             registry.register(module)
         }
         registry.activateAll()
@@ -95,5 +100,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         model.requestCalendarAccess = { [weak self] in self?.calendarModule.requestAccess() }
         model.toggleScreenShare = { [weak self] in self?.privacyModule.toggle() }
+        model.connectEmail = { [weak self] in self?.emailModule.signIn() }
     }
 }

@@ -77,3 +77,20 @@
 - Deduped volume publishes: CoreAudio notifies both the volume and mute listeners
   for one change, so every keypress did the work (and the OSD dismissal) twice.
   Now 1 publish per change, verified.
+
+## 2026-09-01 (brightness, signing, Graph email)
+- Brightness HUD via DisplayServices (dlopen). Public IOKit reads but cannot
+  write on Apple Silicon: IODisplaySetFloatParameter -> -536870201. Verified
+  DS get 0.687 -> set 0.737 -> restored.
+- Stable code-signing cert "Pill Local Dev" created and trusted. Designated
+  requirement is now certificate-based and VERIFIED IDENTICAL across a rebuild,
+  so TCC grants finally survive. The app's identity changed, so the old ad-hoc
+  TCC entry is stale and must be re-granted ONCE.
+- Outlook: Graph implementation complete (device-code OAuth, Mail.ReadBasic,
+  refresh token in keychain, filter + digest, UI row). Blocked on the user
+  creating an Azure app registration -- see docs/graph-setup.md.
+- Fixed a NEW bug introduced by the self-measuring panel: onGeometryChange was
+  reporting animated intermediate heights, so the window chased its own
+  animation and settled at 345x265 instead of collapsing. Removed the SwiftUI
+  size animation; the window controller animates the frame while SwiftUI lays
+  out at the final size. Verified 190x30 -> 360x288 -> 190x30 twice.
