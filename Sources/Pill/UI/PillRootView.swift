@@ -105,6 +105,7 @@ struct PillRootView: View {
         switch activity.kind {
         case .audioOutput: return audioIcon
         case .hud:         return volumeIcon(for: activity)
+        case .brightness:  return brightnessIcon(for: activity)
         case .screenshot:  return "camera.viewfinder"
         case .calendar:    return "calendar"
         case .timer:       return "timer"
@@ -122,6 +123,11 @@ struct PillRootView: View {
         if level < 0.34 { return "speaker.wave.1.fill" }
         if level < 0.67 { return "speaker.wave.2.fill" }
         return "speaker.wave.3.fill"
+    }
+
+    /// Fills in as it gets brighter, the way the system glyph does.
+    private func brightnessIcon(for activity: Activity) -> String {
+        (activity.progress ?? 0) < 0.5 ? "sun.min.fill" : "sun.max.fill"
     }
 
     private var audioIcon: String {

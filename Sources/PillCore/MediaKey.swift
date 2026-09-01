@@ -26,8 +26,9 @@ public enum MediaKey: Equatable, Sendable {
     }
 }
 
-/// Volume arithmetic, matching the system's 16 notches so stepping feels native.
-public enum VolumeStepper {
+/// Level arithmetic for volume and brightness alike, matching the system's 16
+/// notches so stepping feels native rather than approximated.
+public enum LevelStepper {
     public enum Direction { case up, down }
 
     /// One sixteenth per press, the same increment macOS uses.

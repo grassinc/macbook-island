@@ -44,13 +44,13 @@ func runHUDTests(_ r: TestRunner) {
     }
 
     // Volume steps match the system's 16 notches, so our stepping feels native.
-    r.test("volume steps in sixteenths") { r in
-        r.expectEqual(VolumeStepper.step(from: 0.5, direction: .up), 0.5625, "up one sixteenth")
-        r.expectEqual(VolumeStepper.step(from: 0.5, direction: .down), 0.4375, "down one sixteenth")
+    r.test("levels step in sixteenths, for volume and brightness alike") { r in
+        r.expectEqual(LevelStepper.step(from: 0.5, direction: .up), 0.5625, "up one sixteenth")
+        r.expectEqual(LevelStepper.step(from: 0.5, direction: .down), 0.4375, "down one sixteenth")
     }
 
     r.test("volume stepping saturates at the ends instead of wrapping") { r in
-        r.expectEqual(VolumeStepper.step(from: 1.0, direction: .up), 1.0, "cannot exceed full")
-        r.expectEqual(VolumeStepper.step(from: 0.0, direction: .down), 0.0, "cannot go below silent")
+        r.expectEqual(LevelStepper.step(from: 1.0, direction: .up), 1.0, "cannot exceed full")
+        r.expectEqual(LevelStepper.step(from: 0.0, direction: .down), 0.0, "cannot go below silent")
     }
 }

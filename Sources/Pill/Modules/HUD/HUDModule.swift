@@ -101,21 +101,55 @@ final class HUDModule: PillModule {
         case .volumeUp:   adjustVolume(.up);   return true
         case .volumeDown: adjustVolume(.down); return true
         case .mute:       toggleMute();        return true
-        case .brightnessUp, .brightnessDown, .keyboardBacklightUp, .keyboardBacklightDown:
+
+        // Only consumed when we can actually act. If DisplayServices is ever
+        // gated the key passes through and macOS handles brightness itself,
+        // rather than the key silently doing nothing.
+        case .brightnessUp:
+            guard BrightnessController.isAvailable else { return false }
+            adjustBrightness(.up); return true
+        case .brightnessDown:
+            guard BrightnessController.isAvailable else { return false }
+            adjustBrightness(.down); return true
+
+        // Keyboard backlight has no working public or private write path found
+        // on this machine, so these stay with the system.
+        case .keyboardBacklightUp, .keyboardBacklightDown:
             return false
         }
     }
 
-    private func adjustVolume(_ direction: VolumeStepper.Direction) {
+    private func adjustVolume(_ direction: LevelStepper.Direction) {
         guard device != 0, let level = VolumeController.volume(of: device) else { return }
 
         // Nudging volume while muted should unmute, which is what the system does.
         if VolumeController.isMuted(device) {
             VolumeController.setMuted(false, on: device)
         }
-        let next = VolumeStepper.step(from: level, direction: direction)
+        let next = LevelStepper.step(from: level, direction: direction)
         VolumeController.setVolume(next, on: device)
         publish(level: next, muted: false)
+    }
+
+    private func adjustBrightness(_ direction: LevelStepper.Direction) {
+        guard let level = BrightnessController.brightness() else { return }
+        let next = LevelStepper.step(from: level, direction: direction)
+        BrightnessController.setBrightness(next)
+        publishBrightness(next)
+        Log.hud.notice("brightness \(next, privacy: .public)")
+    }
+
+    private func publishBrightness(_ level: Double) {
+        let now = Date()
+        context?.publish(Activity(
+            id: Self.identifier,
+            kind: .brightness,
+            title: "Brightness",
+            priority: .interruptive,
+            startedAt: now,
+            expiresAt: now.addingTimeInterval(visibleFor),
+            progress: level
+        ))
     }
 
     private func toggleMute() {

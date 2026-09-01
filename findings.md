@@ -67,6 +67,30 @@
 - Workarounds: (a) grant AFTER the final build, or (b) sign with a stable
   self-signed certificate so identity survives rebuilds.
 
+## Brightness (verified 2026-09-01)
+- READ works via public IOKit: AppleARMBacklight -> IODisplayParameters ->
+  brightness {min 0, max 65536}. WRITE does not: IODisplaySetFloatParameter
+  returns -536870201 (kIOReturnUnsupported) on this machine.
+- Private DisplayServices DOES work: dlopen +
+  DisplayServicesGetBrightness/SetBrightness. Verified get 0.687 -> set 0.737 ->
+  changed -> restored. Loaded via dlopen, not linked, so a future removal
+  degrades to "unavailable" rather than failing to launch.
+- Keyboard backlight: no working write path found. Keys stay with the system.
+
+## Outlook: legacy AppleScript CANNOT see the real mailbox (verified 2026-09-01)
+- Outlook 16.112.2 with `IsRunningNewOutlook = 1`, `RunningNewOutlook = 1`,
+  `AllAccountsMigratedFromLegacy = 1` -- the new Hx engine.
+- The .sdef still ships and AppleScript partly answers: `get version` works,
+  `count of mail folders` returns 10. But `get every account` fails with -1728,
+  `every exchange account` is empty, and the only visible folders are the local
+  "On My Computer" set. The Inbox it exposes reports 0 messages.
+- The real mailbox lives in HxStore.hxd and is not reachable through the legacy
+  object model. So the brief's "start with AppleScript" plan does NOT work for
+  new Outlook.
+- Sound route: Microsoft Graph API (OAuth + Azure app registration). Reading
+  HxStore.hxd or scraping Notification Center are both excluded -- the brief
+  rules them out and they are fragile across releases.
+
 ## Open questions
 - Does stopping OSDUIHelper require anything beyond killing it on macOS 26? Verify.
 - Confirm ad-hoc signed bundle can hold a stable TCC identity across rebuilds.
