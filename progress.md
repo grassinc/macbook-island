@@ -94,3 +94,25 @@
   animation and settled at 345x265 instead of collapsing. Removed the SwiftUI
   size animation; the window controller animates the frame while SwiftUI lays
   out at the final size. Verified 190x30 -> 360x288 -> 190x30 twice.
+
+## 2026-09-01 (collapse + movable pill)
+- COLLAPSE BUG FIXED. Closing was driven by SwiftUI .onHover, which is not
+  reliable for exit: the panel resizes under the pointer and when the window
+  shrinks away AppKit may deliver no exit event at all, leaving the pill open.
+  Closing is now driven by the real pointer position via a global mouse monitor
+  installed only while the panel is open (mouse events need no Accessibility).
+  6pt of slack so grazing an edge does not snap it shut.
+- Also fixed: a spurious hover at launch left the pill expanded until the mouse
+  next moved, because the panel is born at the origin and then moved into place.
+  show() now settles the state explicitly.
+- PILL IS NOW MOVABLE. Drag it anywhere; position persists across restarts.
+  Cmd-/ resets it to top centre, registered through Carbon so it needs NO
+  Accessibility permission. Placement is stored as a CENTRE x, so the pill does
+  not slide sideways when it opens, and is clamped so it cannot be stranded
+  off-screen.
+- Two bugs found while testing placement: our own repositioning was being
+  recorded as a user drag (the didMove notification races an async flag, and
+  animation fires didMove for every intermediate frame). Now gated on the
+  primary mouse button actually being down, which only a real drag produces.
+- Verified: 190x30 -> 360x288 -> 190x30 on both downward and sideways exits,
+  and the placement key stays unset through launch and a full hover cycle.

@@ -55,4 +55,57 @@ func runPillGeometryTests(_ r: TestRunner) {
         r.expect(PillGeometry.isMenuBarHidden(screenFrame: builtIn, visibleFrame: visible) == false,
                  "a Dock must not be mistaken for fullscreen")
     }
+
+    // Custom placement: the user can drag the pill somewhere else.
+
+    r.test("a custom placement positions by the pill's centre, not its left edge") { r in
+        // Centre must stay put when the pill grows on hover, otherwise the panel
+        // visibly slides sideways every time it opens.
+        let placement = PillPlacement(centerX: 400, topInset: 10)
+        let collapsed = PillGeometry.origin(forSize: CGSize(width: 190, height: 30),
+                                            onScreen: builtIn, placement: placement)
+        let expanded = PillGeometry.origin(forSize: CGSize(width: 360, height: 288),
+                                           onScreen: builtIn, placement: placement)
+        r.expectEqual(collapsed.x, 305, "400 - 190/2")
+        r.expectEqual(expanded.x, 220, "400 - 360/2")
+        r.expectEqual(collapsed.x + 95, expanded.x + 180, "centre is identical in both states")
+    }
+
+    r.test("a custom placement respects its distance from the top") { r in
+        let origin = PillGeometry.origin(forSize: CGSize(width: 190, height: 30),
+                                         onScreen: builtIn,
+                                         placement: PillPlacement(centerX: 400, topInset: 40))
+        r.expectEqual(origin.y, 830, "900 - 40 - 30")
+    }
+
+    // Dragging the pill nearly off-screen must not strand it somewhere the
+    // pointer cannot reach it again.
+    r.test("placement is clamped so the pill stays reachable") { r in
+        let offLeft = PillGeometry.clamp(PillPlacement(centerX: -500, topInset: 10),
+                                         forSize: CGSize(width: 190, height: 30), onScreen: builtIn)
+        r.expectEqual(offLeft.centerX, 95, "half the pill width from the left edge")
+
+        let offRight = PillGeometry.clamp(PillPlacement(centerX: 5000, topInset: 10),
+                                          forSize: CGSize(width: 190, height: 30), onScreen: builtIn)
+        r.expectEqual(offRight.centerX, 1345, "1440 - 95")
+    }
+
+    r.test("placement cannot be dragged above the screen or below its bottom") { r in
+        let tooHigh = PillGeometry.clamp(PillPlacement(centerX: 700, topInset: -80),
+                                         forSize: CGSize(width: 190, height: 30), onScreen: builtIn)
+        r.expectEqual(tooHigh.topInset, 0, "cannot go above the top edge")
+
+        let tooLow = PillGeometry.clamp(PillPlacement(centerX: 700, topInset: 4000),
+                                        forSize: CGSize(width: 190, height: 30), onScreen: builtIn)
+        r.expectEqual(tooLow.topInset, 870, "900 - 30, still fully on screen")
+    }
+
+    r.test("a placement round-trips through JSON so it survives a restart") { r in
+        let placement = PillPlacement(centerX: 512.5, topInset: 18)
+        guard let data = try? JSONEncoder().encode(placement),
+              let back = try? JSONDecoder().decode(PillPlacement.self, from: data) else {
+            r.expect(false, "round trip threw"); return
+        }
+        r.expectEqual(back, placement, "survives encoding")
+    }
 }

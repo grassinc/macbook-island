@@ -22,8 +22,11 @@ final class PillPanel: NSPanel {
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
 
         hidesOnDeactivate = false
-        isMovableByWindowBackground = false
-        isMovable = false
+        // Draggable by its background so the user can put it wherever they
+        // like. SwiftUI controls consume their own mouse events, so buttons and
+        // shelf-tile drags still work.
+        isMovable = true
+        isMovableByWindowBackground = true
 
         // The rounded shape and shadow are drawn in SwiftUI, so the window
         // itself is a clear rectangle.

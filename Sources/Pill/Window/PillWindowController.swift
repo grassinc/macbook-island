@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import SwiftUI
 import Combine
 import PillCore
@@ -16,6 +17,14 @@ final class PillWindowController {
     private let model: PillViewModel
     private var cancellables = Set<AnyCancellable>()
     private var shrinkWork: DispatchWorkItem?
+    private var pointerMonitor: Any?
+    private var moveObserver: NSObjectProtocol?
+    private var resetHotKey: GlobalHotKey?
+    /// The last frame WE set. Compared against, rather than using a flag with
+    /// async clearing: the move notification races the flag, and our own
+    /// repositioning was being recorded as a user drag.
+    private var lastProgrammaticFrame: NSRect = .zero
+    private var placement: PillPlacement?
 
     /// Gap between the top of the screen and the pill.
     private let topInset: CGFloat = 2
@@ -34,13 +43,25 @@ final class PillWindowController {
         host.autoresizingMask = [.width, .height]
         panel.contentView = host
 
+        placement = PlacementStore.load()
+
         observeSize()
         observeScreenChanges()
+        observePresentationForPointerTracking()
+        observeUserDrags()
+        installResetHotKey()
     }
 
     func show() {
         setFrame(size: model.size, animated: false)
         panel.orderFrontRegardless()
+        // The panel is created at the origin and then moved into place. If the
+        // pointer happened to be where it was born, SwiftUI reports a hover that
+        // never gets a matching exit, leaving the pill stuck open until the
+        // mouse next moves. Settle the state explicitly instead.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.collapseIfPointerLeft()
+        }
     }
 
     // MARK: - Reacting to state
@@ -73,8 +94,19 @@ final class PillWindowController {
 
     private func setFrame(size: CGSize, animated: Bool) {
         guard let screen = targetScreen() else { return }
-        let origin = PillGeometry.origin(forSize: size, onScreen: screen.frame, topInset: topInset)
+
+        // A user-chosen placement wins; otherwise fall back to top centre so the
+        // pill keeps following display changes until it is deliberately moved.
+        let origin: CGPoint
+        if let placement {
+            let safe = PillGeometry.clamp(placement, forSize: size, onScreen: screen.frame)
+            origin = PillGeometry.origin(forSize: size, onScreen: screen.frame, placement: safe)
+        } else {
+            origin = PillGeometry.origin(forSize: size, onScreen: screen.frame, topInset: topInset)
+        }
         let frame = NSRect(origin: origin, size: size)
+
+        lastProgrammaticFrame = frame
 
         if animated {
             NSAnimationContext.runAnimationGroup { context in
@@ -85,6 +117,93 @@ final class PillWindowController {
         } else {
             panel.setFrame(frame, display: true)
         }
+    }
+
+    // MARK: - Pointer tracking
+
+    /// Closing is driven by where the pointer actually is, not by SwiftUI's
+    /// hover events.
+    ///
+    /// `.onHover` is reliable enough for opening, but not for closing: the panel
+    /// resizes underneath the pointer, and when the window shrinks away from the
+    /// cursor AppKit may deliver no exit event at all — leaving the pill stuck
+    /// open. Watching the real pointer position removes the guesswork.
+    ///
+    /// The monitor is installed only while the panel is open, so nothing is
+    /// observed at idle. Mouse events need no Accessibility permission.
+    private func observePresentationForPointerTracking() {
+        model.$presentation
+            .removeDuplicates()
+            .sink { [weak self] presentation in
+                guard let self else { return }
+                presentation == .expanded ? self.startPointerTracking() : self.stopPointerTracking()
+            }
+            .store(in: &cancellables)
+    }
+
+    private func startPointerTracking() {
+        guard pointerMonitor == nil else { return }
+        pointerMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.mouseMoved, .leftMouseDragged]
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.collapseIfPointerLeft() }
+        }
+    }
+
+    private func stopPointerTracking() {
+        if let pointerMonitor { NSEvent.removeMonitor(pointerMonitor) }
+        pointerMonitor = nil
+    }
+
+    /// A few points of slack so the pill does not snap shut when the pointer
+    /// grazes the very edge on its way to a control.
+    private let exitSlack: CGFloat = 6
+
+    private func collapseIfPointerLeft() {
+        let generous = panel.frame.insetBy(dx: -exitSlack, dy: -exitSlack)
+        guard !generous.contains(NSEvent.mouseLocation) else { return }
+        model.setHovered(false)
+    }
+
+    // MARK: - User dragging and reset
+
+    private func observeUserDrags() {
+        moveObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didMoveNotification, object: panel, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.recordUserPlacement() }
+        }
+    }
+
+    private func recordUserPlacement() {
+        // A user drag means the primary button is down. Our own repositioning
+        // animates, and every intermediate frame fires didMove too — comparing
+        // frames alone is not enough, because intermediate frames match nothing.
+        // Button state is the one signal only a real drag produces.
+        guard NSEvent.pressedMouseButtons & 1 == 1 else { return }
+        guard let screen = targetScreen() else { return }
+        let frame = panel.frame
+        guard !frame.equalTo(lastProgrammaticFrame) else { return }
+        let moved = PillPlacement(centerX: frame.midX,
+                                  topInset: screen.frame.maxY - frame.maxY)
+        placement = PillGeometry.clamp(moved, forSize: frame.size, onScreen: screen.frame)
+        PlacementStore.save(placement!)
+        Log.activity.notice("pill moved to centerX=\(self.placement!.centerX, privacy: .public) topInset=\(self.placement!.topInset, privacy: .public)")
+    }
+
+    /// Cmd-/ returns the pill to its default spot. Registered through Carbon so
+    /// it needs no Accessibility permission.
+    private func installResetHotKey() {
+        resetHotKey = GlobalHotKey(keyCode: UInt32(kVK_ANSI_Slash), modifiers: UInt32(cmdKey)) { [weak self] in
+            self?.resetPlacement()
+        }
+    }
+
+    func resetPlacement() {
+        placement = nil
+        PlacementStore.reset()
+        setFrame(size: model.size, animated: true)
+        Log.activity.notice("pill placement reset to default")
     }
 
     // MARK: - Screen changes
