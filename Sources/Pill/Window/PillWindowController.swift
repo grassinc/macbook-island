@@ -43,7 +43,8 @@ final class PillWindowController {
                                      thermal: model.thermal, timer: model.timer,
                                      calendar: model.calendar, privacy: model.privacy,
                                      email: model.email,
-                                     nowPlaying: model.nowPlaying))
+                                     nowPlaying: model.nowPlaying,
+                                     network: model.network))
         host.frame = initial
         host.autoresizingMask = [.width, .height]
         panel.contentView = host

@@ -1,15 +1,23 @@
 import SwiftUI
 import PillCore
 
-/// Compact top strip: battery, thermal warning, and the screen-share switch.
+/// Top strip: charge, connectivity, thermal warning, the screen-share switch,
+/// and the output picker.
+///
+/// The sketch puts battery on the left and OUTPUT on the right of one line, so
+/// that is the shape here. Everything between them is conditional and appears
+/// only when it has something to report.
 struct StatusRow: View {
     @ObservedObject var battery: BatteryStore
     @ObservedObject var thermal: ThermalStore
     @ObservedObject var privacy: PrivacyStore
+    @ObservedObject var network: NetworkStore
+    @ObservedObject var audio: AudioOutputStore
+    @Binding var outputExpanded: Bool
     let onToggleShare: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 9) {
             if let mac = battery.mac {
                 Label {
                     Text("\(mac.percent)%")
@@ -17,7 +25,19 @@ struct StatusRow: View {
                 } icon: {
                     Image(systemName: mac.symbol).font(.system(size: 10))
                 }
-                .foregroundStyle(mac.isLow ? .orange : .white.opacity(0.75))
+                .foregroundStyle(mac.isLow ? .orange : .white.opacity(0.78))
+            }
+
+            // Only worth a word when it is bad news; a permanent "Online" is
+            // furniture and would be the first thing the eye learns to skip.
+            if network.state == .offline {
+                Label {
+                    Text("Offline")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                } icon: {
+                    Image(systemName: "wifi.slash").font(.system(size: 10))
+                }
+                .foregroundStyle(.orange)
             }
 
             ForEach(battery.accessories) { accessory in
@@ -42,7 +62,7 @@ struct StatusRow: View {
                 .foregroundStyle(.orange)
             }
 
-            Spacer(minLength: 0)
+            Spacer(minLength: 4)
 
             Button(action: onToggleShare) {
                 Image(systemName: privacy.isScreenSharing ? "eye.slash.fill" : "eye")
@@ -55,8 +75,48 @@ struct StatusRow: View {
                   : (privacy.conferencingAppDetected
                      ? "Screen-share mode (a conferencing app is running)"
                      : "Screen-share mode"))
+
+            OutputChip(audio: audio, expanded: $outputExpanded)
         }
-        .frame(height: 18)
+        .frame(height: 20)
+    }
+}
+
+/// The OUTPUT control from the sketch: a labelled box that names the current
+/// device and opens the picker.
+private struct OutputChip: View {
+    @ObservedObject var audio: AudioOutputStore
+    @Binding var expanded: Bool
+
+    @State private var hovering = false
+
+    var body: some View {
+        Button { expanded.toggle() } label: {
+            HStack(spacing: 5) {
+                Text("OUTPUT")
+                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                    .kerning(0.7)
+                    .foregroundStyle(.white.opacity(0.45))
+                Text(audio.state.current?.name ?? "—")
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .lineLimit(1)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 7, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.45))
+                    .rotationEffect(.degrees(expanded ? 180 : 0))
+            }
+            .padding(.horizontal, 8)
+            .frame(height: 20)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(.white.opacity(hovering || expanded ? 0.14 : 0.08))
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help("Switch audio output")
+        .frame(maxWidth: 190, alignment: .trailing)
     }
 }
 
@@ -132,17 +192,16 @@ struct TimerRow: View {
                 pill(running.isPaused ? "play.fill" : "pause.fill", action: onTogglePause)
                 pill("xmark", action: onCancel)
             } else {
-                Text("TIMER")
-                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                Text("Timer")
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.42))
-                    .kerning(0.8)
                 Spacer(minLength: 0)
                 chip("Pomodoro", action: onPomodoro)
                 chip("5m") { onStart(5 * 60) }
                 chip("25m") { onStart(25 * 60) }
             }
         }
-        .frame(height: 26)
+        .frame(height: 24)
     }
 
     private func chip(_ title: String, action: @escaping () -> Void) -> some View {
@@ -169,16 +228,51 @@ struct TimerRow: View {
     }
 }
 
-/// Outlook mail via Graph: sign-in prompt, or the filtered unread state.
+/// Outlook mail via Graph.
+///
+/// The sketch labels this row and puts a count at the right end, so the header
+/// carries the badge and the newest message sits under it. Under screen-share
+/// mode the badge survives and everything identifying does not.
 struct EmailRow: View {
     @ObservedObject var email: EmailStore
     let redacted: Bool
     let onSignIn: () -> Void
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Text("Email Notifications")
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.42))
+                Spacer(minLength: 0)
+                if total > 0 {
+                    Text("\(total)")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6)
+                        .frame(height: 16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                .fill(email.important.isEmpty ? .white.opacity(0.16) : .blue.opacity(0.85))
+                        )
+                }
+            }
+            detail
+        }
+    }
+
+    /// Everything unread, important or not — the badge answers "how much is
+    /// waiting", which is a different question from "what should I look at".
+    private var total: Int {
+        email.important.count + email.silentUnread
+    }
+
+    @ViewBuilder
+    private var detail: some View {
         switch email.state {
         case .notConfigured:
-            hint("Email needs an Azure client ID — see docs/graph-setup.md", symbol: "envelope.badge.shield.half.filled")
+            hint("Needs an Azure client ID — see docs/graph-setup.md", symbol: "envelope.badge.shield.half.filled")
 
         case .signedOut:
             Button(action: onSignIn) {
@@ -191,7 +285,7 @@ struct EmailRow: View {
                 .foregroundStyle(.white.opacity(0.75))
             }
             .buttonStyle(.plain)
-            .frame(height: 22)
+            .frame(height: 20)
 
         case .awaitingCode(let code, _):
             HStack(spacing: 6) {
@@ -202,7 +296,7 @@ struct EmailRow: View {
                 Text("(copied)").font(.system(size: 9, design: .rounded)).foregroundStyle(.white.opacity(0.45))
                 Spacer(minLength: 0)
             }
-            .frame(height: 22)
+            .frame(height: 20)
 
         case .failed(let reason):
             hint(reason, symbol: "exclamationmark.triangle.fill", tint: .orange)
@@ -229,13 +323,8 @@ struct EmailRow: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
-                if email.silentUnread > 0 {
-                    Text("+\(email.silentUnread)")
-                        .font(.system(size: 9, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.45))
-                }
             }
-            .frame(height: 22)
+            .frame(height: 20)
         } else {
             HStack(spacing: 6) {
                 Image(systemName: "envelope").font(.system(size: 10)).foregroundStyle(.white.opacity(0.4))
@@ -244,7 +333,7 @@ struct EmailRow: View {
                     .foregroundStyle(.white.opacity(0.45))
                 Spacer(minLength: 0)
             }
-            .frame(height: 22)
+            .frame(height: 20)
         }
     }
 
@@ -255,15 +344,17 @@ struct EmailRow: View {
             Spacer(minLength: 0)
         }
         .foregroundStyle(tint)
-        .frame(height: 22)
+        .frame(height: 20)
     }
 }
 
 /// What is currently making sound.
 ///
-/// Degrades in two steps: full transport for a player we can script, the track
-/// name for one we can only read, and the app name otherwise. Every step is
-/// truthful about what it knows.
+/// Laid out as the sketch draws it: artwork on the left, title and elapsed time
+/// on one line, the scrubber under them, transport centred beneath. It degrades
+/// in two steps — full transport for a player we can script, the track name for
+/// one we can only read, the app name otherwise. Every step is truthful about
+/// what it knows.
 struct NowPlayingRow: View {
     @ObservedObject var nowPlaying: NowPlayingStore
     @StateObject private var artwork = ArtworkLoader()
@@ -282,35 +373,46 @@ struct NowPlayingRow: View {
     // MARK: Full player
 
     private func player(_ playback: MediaPlayback) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 11) {
             artworkView
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(playback.title)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                Text(playback.artist)
-                    .font(.system(size: 10, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.55))
-                    .lineLimit(1)
-
-                HStack(spacing: 12) {
-                    control("backward.fill", size: 10, action: onPrevious)
-                    control(playback.isPlaying ? "pause.fill" : "play.fill", size: 13, action: onPlayPause)
-                    control("forward.fill", size: 10, action: onNext)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(playback.title)
+                        .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
                     Spacer(minLength: 0)
-                    Text("\(playback.positionText) / \(playback.durationText)")
-                        .font(.system(size: 9, design: .rounded))
+                    Text(playback.positionText)
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
                         .monospacedDigit()
-                        .foregroundStyle(.white.opacity(0.4))
+                        .foregroundStyle(.white.opacity(0.55))
                 }
-                .padding(.top, 1)
+
+                Text(playback.artist)
+                    .font(.system(size: 10.5, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.52))
+                    .lineLimit(1)
+                    .padding(.top, 1)
 
                 scrubber(playback.progress)
+                    .padding(.top, 7)
+
+                HStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    control("backward.fill", size: 11, action: onPrevious)
+                    control(playback.isPlaying ? "pause.fill" : "play.fill", size: 14, action: onPlayPause)
+                    control("forward.fill", size: 11, action: onNext)
+                    Spacer(minLength: 0)
+                    Text(playback.durationText)
+                        .font(.system(size: 9, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.white.opacity(0.35))
+                }
+                .padding(.top, 3)
             }
         }
-        .frame(height: 62)
+        .frame(height: 66)
         .onAppear { artwork.load(playback.artworkURL) }
         .onChange(of: playback.artworkURL) { _, url in artwork.load(url) }
     }
@@ -322,22 +424,22 @@ struct NowPlayingRow: View {
             } else {
                 // A neutral placeholder, so the layout does not jump when the
                 // download lands.
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(.white.opacity(0.10))
                     .overlay(Image(systemName: "music.note")
-                        .font(.system(size: 16))
+                        .font(.system(size: 18))
                         .foregroundStyle(.white.opacity(0.35)))
             }
         }
-        .frame(width: 54, height: 54)
-        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .frame(width: 62, height: 62)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private func scrubber(_ progress: Double) -> some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 Capsule().fill(.white.opacity(0.15))
-                Capsule().fill(.white.opacity(0.75))
+                Capsule().fill(.white.opacity(0.8))
                     .frame(width: max(2, geometry.size.width * progress))
             }
         }
@@ -349,8 +451,8 @@ struct NowPlayingRow: View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: size, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.9))
-                .frame(width: 22, height: 18)
+                .foregroundStyle(.white.opacity(0.92))
+                .frame(width: 30, height: 20)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

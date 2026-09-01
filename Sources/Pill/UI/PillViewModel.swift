@@ -23,6 +23,7 @@ final class PillViewModel: ObservableObject {
     let privacy: PrivacyStore
     let email: EmailStore
     let nowPlaying: NowPlayingStore
+    let network: NetworkStore
 
     // Actions, so the views never reach into modules.
     var selectDevice: ((AudioOutputDevice) -> Void)?
@@ -60,7 +61,7 @@ final class PillViewModel: ObservableObject {
     init(audio: AudioOutputStore, hud: HUDStore, shelf: ShelfObservable,
          thermal: ThermalStore, battery: BatteryStore, timer: TimerStore,
          calendar: CalendarStore, privacy: PrivacyStore, email: EmailStore,
-         nowPlaying: NowPlayingStore) {
+         nowPlaying: NowPlayingStore, network: NetworkStore) {
         self.audio = audio
         self.hud = hud
         self.shelf = shelf
@@ -71,6 +72,7 @@ final class PillViewModel: ObservableObject {
         self.privacy = privacy
         self.email = email
         self.nowPlaying = nowPlaying
+        self.network = network
         self.size = Self.collapsedSize
 
         // Width is ours to choose; HEIGHT IS MEASURED, never computed.

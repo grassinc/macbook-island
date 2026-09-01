@@ -45,10 +45,9 @@ struct ShelfStrip: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack {
-                Text("SHELF")
-                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                Text("Shelf")
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.42))
-                    .kerning(0.8)
                 Spacer()
                 if !shelf.items.isEmpty {
                     Button("Clear", action: onClear)
@@ -65,33 +64,44 @@ struct ShelfStrip: View {
                     .lineLimit(1)
             }
 
-            if shelf.items.isEmpty {
-                dropHint
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(shelf.items) { item in
-                            ShelfTile(item: item,
-                                      onTransform: { onTransform($0, item) },
-                                      onRemove: { onRemove(item) },
-                                      onDragStart: onDragStart)
+            well {
+                if shelf.items.isEmpty {
+                    Text(shelf.isDropTargeted ? "Release to park" : "Drop files here")
+                        .font(.system(size: 11, design: .rounded))
+                        .foregroundStyle(.white.opacity(shelf.isDropTargeted ? 0.85 : 0.38))
+                        .frame(maxWidth: .infinity)
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(shelf.items) { item in
+                                ShelfTile(item: item,
+                                          onTransform: { onTransform($0, item) },
+                                          onRemove: { onRemove(item) },
+                                          onDragStart: onDragStart)
+                            }
                         }
+                        .padding(.horizontal, 5)
                     }
                 }
-                .frame(height: 50)
             }
         }
     }
 
-    private var dropHint: some View {
-        RoundedRectangle(cornerRadius: 9, style: .continuous)
-            .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
-            .foregroundStyle(.white.opacity(shelf.isDropTargeted ? 0.55 : 0.20))
-            .frame(height: 50)
+    /// The bordered tray the sketch draws: one constant shape whether it holds
+    /// files or an invitation, so nothing about the panel moves when a file
+    /// lands on it.
+    private func well<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .frame(height: 52)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(.white.opacity(shelf.isDropTargeted ? 0.12 : 0.05))
+            )
             .overlay(
-                Text(shelf.isDropTargeted ? "Release to park" : "Drop files here")
-                    .font(.system(size: 11, design: .rounded))
-                    .foregroundStyle(.white.opacity(shelf.isDropTargeted ? 0.85 : 0.40))
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(.white.opacity(shelf.isDropTargeted ? 0.5 : 0.12),
+                                  lineWidth: shelf.isDropTargeted ? 1 : 0.5)
             )
     }
 }

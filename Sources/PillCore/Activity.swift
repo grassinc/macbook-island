@@ -32,6 +32,7 @@ public enum ActivityKind: Sendable, Equatable, Hashable {
     case thermal
     case battery
     case email
+    case network
 }
 
 /// One thing the pill can show. Modules publish these; they never touch the window.

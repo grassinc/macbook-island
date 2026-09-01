@@ -132,7 +132,15 @@ final class NowPlayingModule: PillModule {
                 if let playback {
                     Log.activity.notice("playback \(playback.title, privacy: .public) pos=\(playback.positionText, privacy: .public)/\(playback.durationText, privacy: .public) playing=\(playback.isPlaying, privacy: .public) art=\(playback.artworkURL != nil, privacy: .public)")
                     self.store.track = "\(playback.title) — \(playback.artist)"
-                    self.publish(app: self.store.source?.name ?? "Spotify", track: self.store.track)
+                    // A paused track is not an activity. Holding the collapsed
+                    // pill while nothing plays is the same mistake as latching
+                    // on a silent browser.
+                    if playback.isPlaying {
+                        self.publish(app: self.store.source?.name ?? "Spotify",
+                                     track: self.store.track, verified: true)
+                    } else {
+                        self.context?.retract(id: Self.identifier)
+                    }
                 }
                 // Stop ticking if playback paused while the panel is open.
                 if self.panelIsOpen, playback?.isPlaying != true { self.stopTicker() }
@@ -155,7 +163,8 @@ final class NowPlayingModule: PillModule {
         }
 
         Log.activity.notice("audio from \(primary.name, privacy: .public) [\(primary.bundleID, privacy: .public)]")
-        publish(app: primary.name, track: nil)
+        publish(app: primary.name, track: nil,
+                verified: Self.scriptablePlayers[primary.bundleID] != nil)
 
         if primary.bundleID == SpotifyController.bundleID {
             refreshPlayback()
@@ -166,17 +175,26 @@ final class NowPlayingModule: PillModule {
         }
     }
 
-    private func publish(app: String, track: String?) {
-        // Ambient: knowing what is playing is not worth interrupting for, and it
-        // persists rather than expiring, so the pill can fall back to it when
-        // louder activities finish.
+    /// Ambient: knowing what is playing is not worth interrupting for.
+    ///
+    /// `verified` decides whether it also *stays*. CoreAudio can say that a
+    /// process holds a running output unit; it cannot say whether any sound is
+    /// coming out of it. A browser keeps that unit open for as long as a tab
+    /// that once played audio is alive — measured here, Zen held it open
+    /// indefinitely — so treating that as "now playing" would nail the collapsed
+    /// pill to "Zen" forever and the resting line would never be seen again.
+    /// An unverified source therefore announces itself and steps aside; only a
+    /// player that reports its own transport state earns the pill until it stops.
+    private func publish(app: String, track: String?, verified: Bool) {
+        let now = Date()
         context?.publish(Activity(
             id: Self.identifier,
             kind: .nowPlaying,
             title: track ?? app,
             subtitle: track == nil ? "Playing" : app,
             priority: .ambient,
-            startedAt: Date()
+            startedAt: now,
+            expiresAt: verified ? nil : now.addingTimeInterval(5)
         ))
     }
 
@@ -199,7 +217,7 @@ final class NowPlayingModule: PillModule {
             await MainActor.run {
                 guard self.store.source?.pid == source.pid else { return }
                 self.store.track = text
-                self.publish(app: source.name, track: text)
+                self.publish(app: source.name, track: text, verified: true)
             }
         }
     }

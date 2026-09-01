@@ -13,6 +13,12 @@ struct PillRootView: View {
     @ObservedObject var privacy: PrivacyStore
     @ObservedObject var email: EmailStore
     @ObservedObject var nowPlaying: NowPlayingStore
+    @ObservedObject var network: NetworkStore
+
+    /// The output list is a disclosure, not a permanent fixture: the sketch puts
+    /// OUTPUT on the status row as one control, and an always-open device list
+    /// made the panel twice as tall as everything else combined.
+    @State private var outputExpanded = false
 
     var body: some View {
         ZStack {
@@ -36,6 +42,10 @@ struct PillRootView: View {
         .animation(.easeInOut(duration: 0.18), value: model.activity)
         .contentShape(shape)
         .onHover { model.setHovered($0) }
+        // Closing the panel resets the disclosure, so it always reopens compact.
+        .onChange(of: model.presentation) { _, new in
+            if new == .collapsed { outputExpanded = false }
+        }
         .onDrop(of: [.fileURL], isTargeted: Binding(
             get: { shelf.isDropTargeted },
             set: { targeted in
@@ -91,13 +101,39 @@ struct PillRootView: View {
                         .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundStyle(.white)
                         .lineLimit(1)
-                    Spacer(minLength: 0)
+                        .truncationMode(.tail)
                 }
             }
+            .frame(maxWidth: .infinity)
             .transition(.opacity)
         } else {
-            // Idle: deliberately almost nothing. The pill should be easy to
-            // ignore when it has nothing to say.
+            resting
+        }
+    }
+
+    /// The pill at rest: charge and connectivity, nothing else.
+    ///
+    /// This is what is on screen most of the day, so it carries the two facts
+    /// that are always true and cost nothing to know. A machine with no battery
+    /// shows connectivity alone; one that can report neither falls back to a
+    /// neutral bar rather than inventing a reading.
+    @ViewBuilder
+    private var resting: some View {
+        let mac = battery.mac
+        let alert = network.state == .offline || (mac?.isLow ?? false)
+
+        if mac != nil || network.state == .offline {
+            HStack(spacing: 8) {
+                Image(systemName: mac?.symbol ?? "wifi.slash")
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: 16)
+                Text(StatusLine.text(batteryPercent: mac?.percent, network: network.state))
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(alert ? .orange : .white)
+            .frame(maxWidth: .infinity)
+        } else {
             HStack {
                 Spacer()
                 Capsule().fill(.white.opacity(0.22)).frame(width: 34, height: 4)
@@ -118,6 +154,7 @@ struct PillRootView: View {
         case .battery:     return "battery.25"
         case .email:       return "envelope.fill"
         case .nowPlaying:  return "waveform"
+        case .network:     return "wifi.slash"
         case .generic:     return "circle.fill"
         }
     }
@@ -147,29 +184,23 @@ struct PillRootView: View {
 
     // MARK: - Expanded
 
+    /// One card, in the order the sketches put things: what the machine is
+    /// doing, what it is playing, what is parked on the shelf, what is waiting
+    /// in the inbox. Everything below that line is secondary and only appears
+    /// when it has something to say.
     private var expanded: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 9) {
             StatusRow(battery: battery, thermal: thermal, privacy: privacy,
+                      network: network, audio: audio,
+                      outputExpanded: $outputExpanded,
                       onToggleShare: { model.toggleScreenShare?() })
 
-            Text("OUTPUT")
-                .font(.system(size: 9, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.42))
-                .kerning(0.8)
+            if outputExpanded { outputList }
 
-            if audio.state.devices.isEmpty {
-                Text("No output devices")
-                    .font(.system(size: 12, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.5))
-                    .frame(height: 30)
-            } else {
-                ForEach(audio.state.devices) { device in
-                    DeviceRow(device: device,
-                              isCurrent: device.id == audio.state.current?.id) {
-                        model.selectDevice?(device)
-                    }
-                }
-            }
+            NowPlayingRow(nowPlaying: nowPlaying,
+                          onPlayPause: { model.mediaPlayPause?() },
+                          onNext: { model.mediaNext?() },
+                          onPrevious: { model.mediaPrevious?() })
 
             ShelfStrip(shelf: shelf,
                        onTransform: { action, item in model.runTransform?(action, item) },
@@ -177,50 +208,79 @@ struct PillRootView: View {
                        onClear: { model.clearShelf?() },
                        onDragStart: { model.beginShelfDrag?() })
 
-            NowPlayingRow(nowPlaying: nowPlaying,
-                          onPlayPause: { model.mediaPlayPause?() },
-                          onNext: { model.mediaNext?() },
-                          onPrevious: { model.mediaPrevious?() })
-
             EmailRow(email: email,
                      redacted: privacy.isScreenSharing,
                      onSignIn: { model.connectEmail?() })
 
-            CalendarRow(calendar: calendar,
-                        onRequestAccess: { model.requestCalendarAccess?() },
-                        redacted: privacy.isScreenSharing)
-
-            TimerRow(timer: timer,
-                     onPomodoro: { model.startPomodoro?() },
-                     onStart: { model.startTimer?($0) },
-                     onTogglePause: { model.toggleTimerPause?() },
-                     onCancel: { model.cancelTimer?() })
-
-            // Shown only while it is actionable. SIP blocks disabling Apple's
-            // OSD, so consuming the keys is the only way to replace it, and
-            // that needs Accessibility.
-            if !hud.isReplacingSystemHUD {
-                Divider().overlay(.white.opacity(0.10))
-                Button { model.requestAccessibility?() } label: {
-                    HStack(spacing: 7) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.orange)
-                        Text("Replace system volume HUD")
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.85))
-                        Spacer(minLength: 0)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.45))
-                    }
-                    .padding(.horizontal, 8)
-                    .frame(height: 24)
-                }
-                .buttonStyle(.plain)
-            }
+            secondary
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(11)
+        .background(
+            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                .fill(.white.opacity(0.045))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                        .strokeBorder(.white.opacity(0.07), lineWidth: 0.5)
+                )
+        )
+    }
+
+    @ViewBuilder
+    private var outputList: some View {
+        if audio.state.devices.isEmpty {
+            Text("No output devices")
+                .font(.system(size: 12, design: .rounded))
+                .foregroundStyle(.white.opacity(0.5))
+                .frame(height: 26)
+        } else {
+            VStack(spacing: 2) {
+                ForEach(audio.state.devices) { device in
+                    DeviceRow(device: device,
+                              isCurrent: device.id == audio.state.current?.id) {
+                        model.selectDevice?(device)
+                        outputExpanded = false
+                    }
+                }
+            }
+        }
+    }
+
+    /// Calendar, timers and the one permission prompt. Each hides itself when it
+    /// has nothing to offer, so the resting panel stays short.
+    @ViewBuilder
+    private var secondary: some View {
+        CalendarRow(calendar: calendar,
+                    onRequestAccess: { model.requestCalendarAccess?() },
+                    redacted: privacy.isScreenSharing)
+
+        TimerRow(timer: timer,
+                 onPomodoro: { model.startPomodoro?() },
+                 onStart: { model.startTimer?($0) },
+                 onTogglePause: { model.toggleTimerPause?() },
+                 onCancel: { model.cancelTimer?() })
+
+        // Shown only while it is actionable. SIP blocks disabling Apple's
+        // OSD, so consuming the keys is the only way to replace it, and
+        // that needs Accessibility.
+        if !hud.isReplacingSystemHUD {
+            Button { model.requestAccessibility?() } label: {
+                HStack(spacing: 7) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.orange)
+                    Text("Replace system volume HUD")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.85))
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.45))
+                }
+                .frame(height: 22)
+            }
+            .buttonStyle(.plain)
+        }
     }
 }
 

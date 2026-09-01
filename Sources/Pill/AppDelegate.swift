@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let privacyStore = PrivacyStore()
     private let emailStore = EmailStore()
     private let nowPlayingStore = NowPlayingStore()
+    private let networkStore = NetworkStore()
 
     private var model: PillViewModel!
     private var registry: ModuleRegistry!
@@ -33,12 +34,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var privacyModule: PrivacyModule!
     private var emailModule: EmailModule!
     private var nowPlayingModule: NowPlayingModule!
+    private var networkModule: NetworkModule!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         model = PillViewModel(audio: audioStore, hud: hudStore, shelf: shelfStore,
                               thermal: thermalStore, battery: batteryStore,
                               timer: timerStore, calendar: calendarStore, privacy: privacyStore,
-                              email: emailStore, nowPlaying: nowPlayingStore)
+                              email: emailStore, nowPlaying: nowPlayingStore,
+                              network: networkStore)
         presenter = ActivityPresenter(coordinator: coordinator, model: model, privacy: privacyStore)
 
         audioModule = AudioOutputModule(store: audioStore)
@@ -51,13 +54,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         privacyModule = PrivacyModule(store: privacyStore)
         emailModule = EmailModule(store: emailStore)
         nowPlayingModule = NowPlayingModule(store: nowPlayingStore)
+        networkModule = NetworkModule(store: networkStore)
 
         wireActions()
 
         registry = ModuleRegistry(coordinator: coordinator)
         for module in [audioModule, hudModule, shelfModule, thermalModule,
                        batteryModule, timerModule, calendarModule, privacyModule,
-                       emailModule, nowPlayingModule] as [any PillModule] {
+                       emailModule, nowPlayingModule, networkModule] as [any PillModule] {
             registry.register(module)
         }
         registry.activateAll()
