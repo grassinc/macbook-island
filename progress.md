@@ -45,3 +45,10 @@
   keep working natively until implemented.
 - Owner asked for the file shelf and transform options (brief 3/5/6); planned as
   P10-P13 on a shared ShelfItem model.
+- P10-P13 DONE: shelf, screenshot tray, drag in/out, transforms.
+- Live: fsevents saw the new Desktop file -> "caught screenshot" -> showing=shelf.
+- Fixed hover flapping (tracking area rebuilt on resize caused exit/enter);
+  180ms collapse grace. One clean transition per hover, was four.
+- Idle CPU scare resolved: a reading of ~10% was launch-time work. Sampler showed
+  all threads in semaphore_wait_trap, and a settled 20s re-measure gave 0.00%.
+  113 checks green. RSS ~49 MB.

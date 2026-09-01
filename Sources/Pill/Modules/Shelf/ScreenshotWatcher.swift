@@ -66,10 +66,14 @@ final class ScreenshotWatcher {
     }
 
     fileprivate func handle(paths: [String]) {
+        Log.activity.debug("fsevents saw \(paths.joined(separator: ", "), privacy: .public)")
         let candidates = paths
             .map { URL(fileURLWithPath: $0) }
             .filter { Self.isScreenshot($0) }
-        guard !candidates.isEmpty else { return }
+        guard !candidates.isEmpty else {
+            Log.activity.debug("none of those were screenshots")
+            return
+        }
         onNewFiles(candidates)
     }
 
