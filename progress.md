@@ -23,3 +23,15 @@
   idle CPU time 0:00.93 -> 0:00.93 across 12s (zero), RSS 25 MB.
   Note: `screencapture` is blocked (no Screen Recording for the terminal), so
   visual checks use CGWindowListCopyWindowInfo instead.
+
+## 2026-09-01
+- P4+P5 DONE. Module boundary (PillModule/ModuleContext/ModuleRegistry, main-actor
+  isolated) and the audio output switcher on public CoreAudio, zero permissions.
+- ActivityPresenter schedules ONE wake-up at the next expiry instead of ticking.
+- Verified live: hover 190x30 -> 320x82 -> 190x30. The 82 is 52 + 1 device x 30,
+  confirming the expanded panel sizes itself to the real device count.
+- CoreAudio ground truth here: a single output (id=72 'MacBook Air Speakers',
+  transport bltn). The switcher is correct but has nothing to switch to until a
+  second device is paired; end-to-end route-change announcement is UNVERIFIED
+  for that reason.
+- 44 checks green.

@@ -5,6 +5,7 @@ import Foundation
 /// A module receives only a `ModuleContext` — it cannot reach the panel, the
 /// coordinator, or another module. That boundary is what lets a module be
 /// exercised in tests with no window on screen.
+@MainActor
 public protocol PillModule: AnyObject {
     static var identifier: String { get }
 
@@ -16,6 +17,7 @@ public protocol PillModule: AnyObject {
 }
 
 /// The only surface a module has on the rest of the app.
+@MainActor
 public final class ModuleContext {
     private let coordinator: ActivityCoordinator
 
@@ -33,6 +35,7 @@ public final class ModuleContext {
 /// contract, and freezing one before the first three modules exist would design
 /// it against zero real users. `PillModule` is shaped so a future bundle loader
 /// can implement the same protocol without module code changing.
+@MainActor
 public final class ModuleRegistry {
     private let coordinator: ActivityCoordinator
     private var modules: [any PillModule] = []

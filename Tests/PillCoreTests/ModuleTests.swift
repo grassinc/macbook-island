@@ -3,6 +3,7 @@ import Foundation
 
 private let t0 = Date(timeIntervalSinceReferenceDate: 1_000_000)
 
+@MainActor
 private final class FakeModule: PillModule {
     static let identifier = "fake"
     var activateCount = 0
@@ -16,6 +17,7 @@ private final class FakeModule: PillModule {
     func deactivate() { deactivateCount += 1 }
 }
 
+@MainActor
 func runModuleTests(_ r: TestRunner) {
 
     r.test("registry activates every registered module once") { r in

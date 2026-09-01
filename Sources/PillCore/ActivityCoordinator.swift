@@ -11,14 +11,32 @@ import Foundation
 public final class ActivityCoordinator {
     private var activities: [String: Activity] = [:]
 
+    /// Called whenever the set of activities changes. Expiry does NOT fire this
+    /// — nothing changes in the set when time passes — so a presenter also needs
+    /// `nextExpiry(after:)` to know when to re-evaluate.
+    public var onChange: (() -> Void)?
+
     public init() {}
 
     public func publish(_ activity: Activity) {
         activities[activity.id] = activity
+        onChange?()
     }
 
     public func retract(id: String) {
-        activities.removeValue(forKey: id)
+        guard activities.removeValue(forKey: id) != nil else { return }
+        onChange?()
+    }
+
+    /// The earliest expiry still ahead of `now`, or nil if nothing will expire.
+    ///
+    /// This is what keeps the idle path free of polling: the presenter schedules
+    /// exactly one wake-up for this instant rather than ticking to check.
+    public func nextExpiry(after now: Date) -> Date? {
+        activities.values
+            .compactMap(\.expiresAt)
+            .filter { $0 > now }
+            .min()
     }
 
     public func liveActivities(at now: Date) -> [Activity] {

@@ -22,66 +22,59 @@ final class PillWindowController {
 
     init(model: PillViewModel) {
         self.model = model
-        let initial = NSRect(origin: .zero, size: model.presentation.size)
+        let initial = NSRect(origin: .zero, size: model.size)
         self.panel = PillPanel(contentRect: initial)
 
-        let host = NSHostingView(rootView: PillRootView(model: model))
+        let host = PillHostingView(rootView: PillRootView(model: model, audio: model.audio))
         host.frame = initial
         host.autoresizingMask = [.width, .height]
         panel.contentView = host
 
-        observePresentation()
+        observeSize()
         observeScreenChanges()
     }
 
     func show() {
-        reposition(animated: false)
+        setFrame(size: model.size, animated: false)
         panel.orderFrontRegardless()
     }
 
     // MARK: - Reacting to state
 
-    private func observePresentation() {
-        model.$presentation
+    private func observeSize() {
+        model.$size
             .removeDuplicates()
-            .sink { [weak self] presentation in
-                self?.applyPresentation(presentation)
-            }
+            .dropFirst()
+            .sink { [weak self] size in self?.applySize(size) }
             .store(in: &cancellables)
     }
 
-    /// Growing happens immediately so the expanding content is never clipped by
-    /// a too-small window. Shrinking waits for the collapse animation to finish,
-    /// for the same reason in reverse. The delay is a single one-shot work item,
-    /// not a repeating timer — the idle path stays at zero scheduled work.
-    private func applyPresentation(_ presentation: PillPresentation) {
+    /// Growing happens immediately so expanding content is never clipped by a
+    /// too-small window. Shrinking waits for the collapse animation to finish,
+    /// for the same reason in reverse. Both are one-shot work items, so the idle
+    /// path schedules nothing.
+    private func applySize(_ target: CGSize) {
         shrinkWork?.cancel()
         shrinkWork = nil
 
-        let target = presentation.size
         let current = panel.frame.size
-
         if target.width >= current.width && target.height >= current.height {
             setFrame(size: target, animated: true)
         } else {
-            let work = DispatchWorkItem { [weak self] in
-                self?.setFrame(size: target, animated: true)
-            }
+            let work = DispatchWorkItem { [weak self] in self?.setFrame(size: target, animated: true) }
             shrinkWork = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.36, execute: work)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.30, execute: work)
         }
     }
 
     private func setFrame(size: CGSize, animated: Bool) {
         guard let screen = targetScreen() else { return }
-        let origin = PillGeometry.origin(forSize: size,
-                                         onScreen: screen.frame,
-                                         topInset: topInset)
+        let origin = PillGeometry.origin(forSize: size, onScreen: screen.frame, topInset: topInset)
         let frame = NSRect(origin: origin, size: size)
 
         if animated {
             NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.28
+                context.duration = 0.26
                 context.timingFunction = CAMediaTimingFunction(name: .easeOut)
                 panel.animator().setFrame(frame, display: true)
             }
@@ -90,21 +83,19 @@ final class PillWindowController {
         }
     }
 
-    private func reposition(animated: Bool) {
-        setFrame(size: model.presentation.size, animated: animated)
-    }
-
     // MARK: - Screen changes
 
     private func observeScreenChanges() {
         NotificationCenter.default
             .publisher(for: NSApplication.didChangeScreenParametersNotification)
-            .sink { [weak self] _ in self?.reposition(animated: false) }
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.setFrame(size: self.model.size, animated: false)
+            }
             .store(in: &cancellables)
     }
 
-    /// The screen that owns the menu bar. `NSScreen.screens.first` is the
-    /// display containing the origin, which is where the menu bar lives.
+    /// The screen that owns the menu bar: the one containing the origin.
     private func targetScreen() -> NSScreen? {
         NSScreen.screens.first ?? NSScreen.main
     }

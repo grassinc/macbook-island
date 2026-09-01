@@ -68,4 +68,61 @@ func runActivityCoordinatorTests(_ r: TestRunner) {
         r.expectEqual(coordinator.liveActivities(at: at(2.5)).count, 1, "same id should not accumulate")
         r.expect(coordinator.selection(at: at(2.5))?.id == "volume", "refreshed activity should extend its life")
     }
+
+    r.test("publishing notifies an observer") { r in
+        let coordinator = ActivityCoordinator()
+        var notifications = 0
+        coordinator.onChange = { notifications += 1 }
+        coordinator.publish(Activity(id: "a", priority: .info, startedAt: t0))
+        r.expectEqual(notifications, 1, "publish should notify once")
+    }
+
+    r.test("retracting notifies an observer") { r in
+        let coordinator = ActivityCoordinator()
+        coordinator.publish(Activity(id: "a", priority: .info, startedAt: t0))
+        var notifications = 0
+        coordinator.onChange = { notifications += 1 }
+        coordinator.retract(id: "a")
+        r.expectEqual(notifications, 1, "retract should notify once")
+    }
+
+    // Expiry changes what is on screen without any publish or retract, so the
+    // presenter needs to know when to look again. Returning the earliest future
+    // expiry lets it schedule exactly one wake-up instead of polling.
+    r.test("next expiry is the earliest one still in the future") { r in
+        let coordinator = ActivityCoordinator()
+        coordinator.publish(Activity(id: "long", priority: .transient, startedAt: t0, expiresAt: at(30)))
+        coordinator.publish(Activity(id: "short", priority: .interruptive, startedAt: t0, expiresAt: at(2)))
+        r.expectEqual(coordinator.nextExpiry(after: t0), at(2), "earliest future expiry wins")
+    }
+
+    r.test("expiries already in the past are not scheduled again") { r in
+        let coordinator = ActivityCoordinator()
+        coordinator.publish(Activity(id: "gone", priority: .transient, startedAt: t0, expiresAt: at(2)))
+        coordinator.publish(Activity(id: "later", priority: .transient, startedAt: t0, expiresAt: at(30)))
+        r.expectEqual(coordinator.nextExpiry(after: at(10)), at(30), "past expiries are skipped")
+    }
+
+    r.test("with nothing expiring there is no wake-up to schedule") { r in
+        let coordinator = ActivityCoordinator()
+        coordinator.publish(Activity(id: "forever", priority: .ambient, startedAt: t0))
+        r.expect(coordinator.nextExpiry(after: t0) == nil, "a permanent activity schedules nothing")
+    }
+
+    // The pill has to render something. Activities carry semantic display data
+    // and a kind; mapping kind to an actual view stays in the app layer so
+    // PillCore never imports SwiftUI.
+    r.test("an activity carries a title and a kind for rendering") { r in
+        let a = Activity(id: "audio.output", kind: .audioOutput, title: "AirPods Pro",
+                         subtitle: "Output", priority: .transient, startedAt: t0)
+        r.expectEqual(a.title, "AirPods Pro", "title is carried")
+        r.expectEqual(a.subtitle, "Output", "subtitle is carried")
+        r.expect(a.kind == .audioOutput, "kind is carried")
+    }
+
+    r.test("kind and title default so simple activities stay terse") { r in
+        let a = Activity(id: "x", priority: .info, startedAt: t0)
+        r.expect(a.kind == .generic, "kind defaults to generic")
+        r.expectEqual(a.title, "", "title defaults to empty")
+    }
 }

@@ -18,16 +18,37 @@ public enum ActivityPriority: Int, Comparable, Sendable {
     public static func < (lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
 }
 
+/// What sort of thing an activity is. The app layer maps this to a view, which
+/// is how PillCore avoids importing SwiftUI.
+public enum ActivityKind: Sendable, Equatable {
+    case generic
+    case audioOutput
+    case hud
+    case screenshot
+}
+
 /// One thing the pill can show. Modules publish these; they never touch the window.
 public struct Activity: Sendable, Equatable, Identifiable {
     public let id: String
+    public let kind: ActivityKind
+    public let title: String
+    public let subtitle: String?
     public let priority: ActivityPriority
     public let startedAt: Date
     /// When this stops being shown. `nil` means it stays until retracted.
     public let expiresAt: Date?
 
-    public init(id: String, priority: ActivityPriority, startedAt: Date, expiresAt: Date? = nil) {
+    public init(id: String,
+                kind: ActivityKind = .generic,
+                title: String = "",
+                subtitle: String? = nil,
+                priority: ActivityPriority,
+                startedAt: Date,
+                expiresAt: Date? = nil) {
         self.id = id
+        self.kind = kind
+        self.title = title
+        self.subtitle = subtitle
         self.priority = priority
         self.startedAt = startedAt
         self.expiresAt = expiresAt

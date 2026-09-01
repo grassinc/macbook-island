@@ -16,8 +16,8 @@ with three features: HUD replacement, audio output switcher, screenshot catch tr
 - [x] P1  Buildable app bundle: SwiftPM package + Info.plist + build script + ad-hoc sign
 - [x] P2  Core model: Activity, ActivityPriority, ActivityCoordinator (+ tests, TDD)
 - [x] P3  Window layer: PillPanel, positioning, hover tracking, fullscreen policy
-- [ ] P4  Module boundary: PillModule, ModuleContext, registry
-- [ ] P5  Audio output switcher module (CoreAudio, no permissions)
+- [x] P4  Module boundary: PillModule, ModuleContext, registry
+- [x] P5  Audio output switcher module (CoreAudio, no permissions)
 - [ ] P6  HUD module (volume first; brightness/backlight behind Accessibility)
 - [ ] P7  Screenshot tray module (FSEvents + drag-out)
 - [ ] P8  Permission onboarding window

@@ -1,25 +1,48 @@
 import SwiftUI
+import Combine
 import PillCore
 
-/// What the pill is currently showing, and how big it therefore needs to be.
 enum PillPresentation: Equatable {
     case collapsed
     case expanded
-
-    var size: CGSize {
-        switch self {
-        case .collapsed: CGSize(width: 190, height: 30)
-        case .expanded:  CGSize(width: 340, height: 96)
-        }
-    }
 }
 
 @MainActor
 final class PillViewModel: ObservableObject {
     @Published private(set) var presentation: PillPresentation = .collapsed
     @Published private(set) var activity: Activity?
+    @Published private(set) var size: CGSize = .zero
 
-    /// Set by the window controller when the pointer enters or leaves the panel.
+    let audio: AudioOutputStore
+
+    /// Set by the app so the view can act without knowing about modules.
+    var selectDevice: ((AudioOutputDevice) -> Void)?
+
+    private var cancellables = Set<AnyCancellable>()
+
+    private static let collapsedSize = CGSize(width: 190, height: 30)
+
+    init(audio: AudioOutputStore) {
+        self.audio = audio
+        self.size = Self.collapsedSize
+
+        // The expanded panel has to fit however many outputs exist right now,
+        // so its height is derived rather than hard-coded.
+        Publishers.CombineLatest($presentation, audio.$state)
+            .map { presentation, state -> CGSize in
+                switch presentation {
+                case .collapsed:
+                    return Self.collapsedSize
+                case .expanded:
+                    let rows = max(state.devices.count, 1)
+                    return CGSize(width: 320, height: 52 + CGFloat(rows) * 30)
+                }
+            }
+            .removeDuplicates()
+            .assign(to: \.size, on: self)
+            .store(in: &cancellables)
+    }
+
     func setHovered(_ hovered: Bool) {
         presentation = hovered ? .expanded : .collapsed
     }
