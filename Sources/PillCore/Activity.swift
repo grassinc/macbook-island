@@ -31,7 +31,6 @@ public enum ActivityKind: Sendable, Equatable, Hashable {
     case timer
     case thermal
     case battery
-    case email
     case network
 }
 

@@ -21,7 +21,6 @@ final class PillViewModel: ObservableObject {
     let timer: TimerStore
     let calendar: CalendarStore
     let privacy: PrivacyStore
-    let email: EmailStore
     let nowPlaying: NowPlayingStore
     let network: NetworkStore
 
@@ -44,7 +43,6 @@ final class PillViewModel: ObservableObject {
     /// animates under the cursor; without this the pill re-opens mid-close and
     /// visibly jitters sideways.
     var pointerIsOverPanel: (() -> Bool)?
-    var connectEmail: (() -> Void)?
     var mediaPlayPause: (() -> Void)?
     var mediaNext: (() -> Void)?
     var mediaPrevious: (() -> Void)?
@@ -60,7 +58,7 @@ final class PillViewModel: ObservableObject {
 
     init(audio: AudioOutputStore, hud: HUDStore, shelf: ShelfObservable,
          thermal: ThermalStore, battery: BatteryStore, timer: TimerStore,
-         calendar: CalendarStore, privacy: PrivacyStore, email: EmailStore,
+         calendar: CalendarStore, privacy: PrivacyStore,
          nowPlaying: NowPlayingStore, network: NetworkStore) {
         self.audio = audio
         self.hud = hud
@@ -70,7 +68,6 @@ final class PillViewModel: ObservableObject {
         self.timer = timer
         self.calendar = calendar
         self.privacy = privacy
-        self.email = email
         self.nowPlaying = nowPlaying
         self.network = network
         self.size = Self.collapsedSize

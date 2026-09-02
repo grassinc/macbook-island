@@ -11,7 +11,6 @@ struct PillRootView: View {
     @ObservedObject var timer: TimerStore
     @ObservedObject var calendar: CalendarStore
     @ObservedObject var privacy: PrivacyStore
-    @ObservedObject var email: EmailStore
     @ObservedObject var nowPlaying: NowPlayingStore
     @ObservedObject var network: NetworkStore
 
@@ -152,7 +151,6 @@ struct PillRootView: View {
         case .timer:       return "timer"
         case .thermal:     return "thermometer.medium"
         case .battery:     return "battery.25"
-        case .email:       return "envelope.fill"
         case .nowPlaying:  return "waveform"
         case .network:     return "wifi.slash"
         case .generic:     return "circle.fill"
@@ -207,10 +205,6 @@ struct PillRootView: View {
                        onRemove: { model.removeShelfItem?($0) },
                        onClear: { model.clearShelf?() },
                        onDragStart: { model.beginShelfDrag?() })
-
-            EmailRow(email: email,
-                     redacted: privacy.isScreenSharing,
-                     onSignIn: { model.connectEmail?() })
 
             // Neither sketch has a calendar prompt, timer chips or a
             // permission nag in it. While something is playing the panel is

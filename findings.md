@@ -78,6 +78,8 @@
 - Keyboard backlight: no working write path found. Keys stay with the system.
 
 ## Outlook: legacy AppleScript CANNOT see the real mailbox (verified 2026-09-01)
+*(Mail was removed from the app on 2026-09-01. Kept as evidence for why the
+brief's AppleScript plan was dead, should mail ever be revisited.)*
 - Outlook 16.112.2 with `IsRunningNewOutlook = 1`, `RunningNewOutlook = 1`,
   `AllAccountsMigratedFromLegacy = 1` -- the new Hx engine.
 - The .sdef still ships and AppleScript partly answers: `get version` works,

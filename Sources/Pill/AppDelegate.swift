@@ -15,7 +15,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let timerStore = TimerStore()
     private let calendarStore = CalendarStore()
     private let privacyStore = PrivacyStore()
-    private let emailStore = EmailStore()
     private let nowPlayingStore = NowPlayingStore()
     private let networkStore = NetworkStore()
 
@@ -32,7 +31,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var timerModule: TimerModule!
     private var calendarModule: CalendarModule!
     private var privacyModule: PrivacyModule!
-    private var emailModule: EmailModule!
     private var nowPlayingModule: NowPlayingModule!
     private var networkModule: NetworkModule!
 
@@ -40,7 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model = PillViewModel(audio: audioStore, hud: hudStore, shelf: shelfStore,
                               thermal: thermalStore, battery: batteryStore,
                               timer: timerStore, calendar: calendarStore, privacy: privacyStore,
-                              email: emailStore, nowPlaying: nowPlayingStore,
+                              nowPlaying: nowPlayingStore,
                               network: networkStore)
         presenter = ActivityPresenter(coordinator: coordinator, model: model, privacy: privacyStore)
 
@@ -52,7 +50,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         timerModule = TimerModule(store: timerStore)
         calendarModule = CalendarModule(store: calendarStore)
         privacyModule = PrivacyModule(store: privacyStore)
-        emailModule = EmailModule(store: emailStore)
         nowPlayingModule = NowPlayingModule(store: nowPlayingStore)
         networkModule = NetworkModule(store: networkStore)
 
@@ -61,7 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         registry = ModuleRegistry(coordinator: coordinator)
         for module in [audioModule, hudModule, shelfModule, thermalModule,
                        batteryModule, timerModule, calendarModule, privacyModule,
-                       emailModule, nowPlayingModule, networkModule] as [any PillModule] {
+                       nowPlayingModule, networkModule] as [any PillModule] {
             registry.register(module)
         }
         registry.activateAll()
@@ -107,7 +104,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         model.requestCalendarAccess = { [weak self] in self?.calendarModule.requestAccess() }
         model.toggleScreenShare = { [weak self] in self?.privacyModule.toggle() }
-        model.connectEmail = { [weak self] in self?.emailModule.signIn() }
         model.mediaPlayPause = { [weak self] in self?.nowPlayingModule.playPause() }
         model.mediaNext = { [weak self] in self?.nowPlayingModule.next() }
         model.mediaPrevious = { [weak self] in self?.nowPlayingModule.previous() }

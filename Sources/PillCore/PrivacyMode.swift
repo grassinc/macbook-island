@@ -12,7 +12,7 @@ public enum PrivacyMode: Equatable, Sendable {
 
     /// Kinds whose title can expose something the user would not want on a
     /// projector or in a recording.
-    private static let sensitiveKinds: Set<ActivityKind> = [.calendar, .screenshot, .email]
+    private static let sensitiveKinds: Set<ActivityKind> = [.calendar, .screenshot]
 
     public func redact(_ activity: Activity) -> Activity {
         guard self == .screenShare, Self.sensitiveKinds.contains(activity.kind) else { return activity }
@@ -34,7 +34,6 @@ public enum PrivacyMode: Equatable, Sendable {
         switch kind {
         case .calendar:   "Event"
         case .screenshot: "Screenshot"
-        case .email:      "Message"
         default:          ""
         }
     }

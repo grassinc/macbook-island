@@ -42,7 +42,6 @@ final class PillWindowController {
                                      shelf: model.shelf, battery: model.battery,
                                      thermal: model.thermal, timer: model.timer,
                                      calendar: model.calendar, privacy: model.privacy,
-                                     email: model.email,
                                      nowPlaying: model.nowPlaying,
                                      network: model.network))
         host.frame = initial

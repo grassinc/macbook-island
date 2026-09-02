@@ -148,3 +148,16 @@
   corrective event ever follows, so the panel closed under the cursor. The
   pointer is now the authority in both directions.
 - CPU with the panel open and playing: 3.0% -> 0.55%.
+
+## 2026-09-01 (mail removed)
+
+Email is out at the user's request. Deleted: `Sources/Pill/Modules/Email/`
+(module, Graph device-code OAuth, mail client, keychain wrapper),
+`Sources/PillCore/Email.swift`, its tests, `docs/graph-setup.md`, the panel
+row, and the `.email` activity kind. Nothing was ever configured on this
+machine -- no `graph.json` was written and no token reached the keychain, so
+there is nothing to revoke. 235 checks became 223.
+
+The Outlook research in findings.md stays: it is the evidence for why the
+brief's "start with AppleScript" plan was dead for the new Hx engine, and it
+would have to be re-derived if mail is ever revisited.
