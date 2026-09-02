@@ -5,3 +5,8 @@ Pill.app/
 .DS_Store
 signing/*.key
 signing/*.p12
+
+# Secrets — never committed. .env.example is the template and IS committed,
+# so the ignore rules name the real files rather than globbing .env.*
+.env
+.env.local
