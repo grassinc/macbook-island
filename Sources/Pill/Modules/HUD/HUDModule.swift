@@ -54,6 +54,7 @@ final class HUDModule: PillModule {
         }
 
         keyTap.onKey = { [weak self] key in self?.handle(key) ?? false }
+        keyTap.onCapsLock = { [weak self] on in self?.publishCapsLock(on) }
         store.isReplacingSystemHUD = keyTap.start()
 
         // Start the tap the moment the user flips the switch in System Settings,
@@ -137,6 +138,25 @@ final class HUDModule: PillModule {
         BrightnessController.setBrightness(next)
         publishBrightness(next)
         Log.hud.notice("brightness \(next, privacy: .public)")
+    }
+
+    /// Caps Lock, announced on both edges.
+    ///
+    /// Said briefly rather than shown permanently: the whole value is knowing
+    /// the moment it changed, usually because a password was just rejected. A
+    /// permanent indicator would sit on top of the resting line all day for a
+    /// key most people press by accident once a month.
+    private func publishCapsLock(_ on: Bool) {
+        Log.activity.notice("caps lock \(on ? "on" : "off", privacy: .public)")
+        let now = Date()
+        context?.publish(Activity(
+            id: "capslock",
+            kind: .capsLock,
+            title: on ? "Caps Lock on" : "Caps Lock off",
+            priority: .interruptive,
+            startedAt: now,
+            expiresAt: now.addingTimeInterval(on ? 2.0 : 1.2)
+        ))
     }
 
     private func publishBrightness(_ level: Double) {

@@ -383,3 +383,69 @@ struct NowPlayingRow: View {
         .frame(height: 22)
     }
 }
+
+
+/// Screenshot, recording and appearance — one click each, from the panel.
+struct QuickActionsRow: View {
+    @ObservedObject var actions: QuickActionsStore
+    let onScreenshot: () -> Void
+    let onRecord: () -> Void
+    let onAppearance: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                action("viewfinder", "Capture a region", tint: .white.opacity(0.85), do: onScreenshot)
+                action(actions.isRecording ? "stop.fill" : "record.circle",
+                       actions.isRecording ? "Stop recording" : "Record the screen",
+                       tint: actions.isRecording ? .red : .white.opacity(0.85),
+                       do: onRecord)
+                action(actions.isDark ? "sun.max.fill" : "moon.fill",
+                       actions.isDark ? "Switch to light" : "Switch to dark",
+                       tint: .white.opacity(0.85), do: onAppearance)
+                Spacer(minLength: 0)
+                if actions.isRecording {
+                    Text("Recording")
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.red)
+                }
+            }
+            if let error = actions.lastError {
+                Text(error)
+                    .font(.system(size: 10, design: .rounded))
+                    .foregroundStyle(.orange)
+                    .lineLimit(1)
+            }
+        }
+    }
+
+    private func action(_ symbol: String, _ help: String, tint: Color,
+                        do perform: @escaping () -> Void) -> some View {
+        QuickActionButton(symbol: symbol, help: help, tint: tint, perform: perform)
+    }
+}
+
+private struct QuickActionButton: View {
+    let symbol: String
+    let help: String
+    let tint: Color
+    let perform: () -> Void
+
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: perform) {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(tint)
+                .frame(width: 34, height: 24)
+                .background(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(.white.opacity(hovering ? 0.16 : 0.07))
+                )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help(help)
+    }
+}

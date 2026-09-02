@@ -17,6 +17,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let privacyStore = PrivacyStore()
     private let nowPlayingStore = NowPlayingStore()
     private let networkStore = NetworkStore()
+    private let bluetoothStore = BluetoothStore()
+    private let actionsStore = QuickActionsStore()
 
     private var model: PillViewModel!
     private var registry: ModuleRegistry!
@@ -33,13 +35,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var privacyModule: PrivacyModule!
     private var nowPlayingModule: NowPlayingModule!
     private var networkModule: NetworkModule!
+    private var bluetoothModule: BluetoothModule!
+    private var actionsModule: QuickActionsModule!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         model = PillViewModel(audio: audioStore, hud: hudStore, shelf: shelfStore,
                               thermal: thermalStore, battery: batteryStore,
                               timer: timerStore, calendar: calendarStore, privacy: privacyStore,
                               nowPlaying: nowPlayingStore,
-                              network: networkStore)
+                              network: networkStore, bluetooth: bluetoothStore,
+                              actions: actionsStore)
         presenter = ActivityPresenter(coordinator: coordinator, model: model, privacy: privacyStore)
 
         audioModule = AudioOutputModule(store: audioStore)
@@ -52,13 +57,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         privacyModule = PrivacyModule(store: privacyStore)
         nowPlayingModule = NowPlayingModule(store: nowPlayingStore)
         networkModule = NetworkModule(store: networkStore)
+        bluetoothModule = BluetoothModule(store: bluetoothStore)
+        actionsModule = QuickActionsModule(store: actionsStore)
 
         wireActions()
 
         registry = ModuleRegistry(coordinator: coordinator)
         for module in [audioModule, hudModule, shelfModule, thermalModule,
                        batteryModule, timerModule, calendarModule, privacyModule,
-                       nowPlayingModule, networkModule] as [any PillModule] {
+                       nowPlayingModule, networkModule, bluetoothModule,
+                       actionsModule] as [any PillModule] {
             registry.register(module)
         }
         registry.activateAll()
@@ -107,6 +115,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.mediaPlayPause = { [weak self] in self?.nowPlayingModule.playPause() }
         model.mediaNext = { [weak self] in self?.nowPlayingModule.next() }
         model.mediaPrevious = { [weak self] in self?.nowPlayingModule.previous() }
+        model.captureRegion = { [weak self] in self?.actionsModule.captureRegion() }
+        model.toggleRecording = { [weak self] in self?.actionsModule.toggleRecording() }
+        model.toggleAppearance = { [weak self] in self?.actionsModule.toggleDarkMode() }
         // The scrubber only needs to move while someone can see it.
         model.onPanelOpenChanged = { [weak self] open in self?.nowPlayingModule.setPanelOpen(open) }
     }

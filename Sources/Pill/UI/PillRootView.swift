@@ -13,6 +13,8 @@ struct PillRootView: View {
     @ObservedObject var privacy: PrivacyStore
     @ObservedObject var nowPlaying: NowPlayingStore
     @ObservedObject var network: NetworkStore
+    @ObservedObject var bluetooth: BluetoothStore
+    @ObservedObject var actions: QuickActionsStore
 
     /// The output list is a disclosure, not a permanent fixture: the sketch puts
     /// OUTPUT on the status row as one control, and an always-open device list
@@ -153,8 +155,17 @@ struct PillRootView: View {
         case .battery:     return "battery.25"
         case .nowPlaying:  return "waveform"
         case .network:     return "wifi.slash"
+        case .bluetooth:   return bluetoothIcon(for: activity)
+        case .capsLock:    return "capslock.fill"
+        case .screenRecording: return "record.circle"
         case .generic:     return "circle.fill"
         }
+    }
+
+    /// The pill shows the kind of thing that connected, not a generic radio
+    /// glyph — AirPods should look like AirPods.
+    private func bluetoothIcon(for activity: Activity) -> String {
+        BluetoothModule.symbol(for: bluetooth.kind(named: activity.title))
     }
 
     /// Mirrors the system's own stepping so the icon reads as familiar.
@@ -199,6 +210,11 @@ struct PillRootView: View {
                           onPlayPause: { model.mediaPlayPause?() },
                           onNext: { model.mediaNext?() },
                           onPrevious: { model.mediaPrevious?() })
+
+            QuickActionsRow(actions: actions,
+                            onScreenshot: { model.captureRegion?() },
+                            onRecord: { model.toggleRecording?() },
+                            onAppearance: { model.toggleAppearance?() })
 
             ShelfStrip(shelf: shelf,
                        onTransform: { action, item in model.runTransform?(action, item) },

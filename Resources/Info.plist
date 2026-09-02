@@ -24,6 +24,8 @@
     <string>Pill reads the current track from Spotify and Music so it can show artwork and offer playback controls.</string>
 
     <!-- EventKit refuses to prompt without this and takes the app down with it. -->
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Pill shows when your AirPods and other Bluetooth devices connect and disconnect.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>
     <string>Pill shows your next event and a one-click join button for video calls.</string>
     <key>NSCalendarsUsageDescription</key>

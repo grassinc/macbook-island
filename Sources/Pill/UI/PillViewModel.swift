@@ -23,6 +23,8 @@ final class PillViewModel: ObservableObject {
     let privacy: PrivacyStore
     let nowPlaying: NowPlayingStore
     let network: NetworkStore
+    let bluetooth: BluetoothStore
+    let actions: QuickActionsStore
 
     // Actions, so the views never reach into modules.
     var selectDevice: ((AudioOutputDevice) -> Void)?
@@ -49,6 +51,9 @@ final class PillViewModel: ObservableObject {
     /// Fires when the panel opens or closes, so work that only matters while
     /// the user is looking (the scrubber) can be started and stopped.
     var onPanelOpenChanged: ((Bool) -> Void)?
+    var captureRegion: (() -> Void)?
+    var toggleRecording: (() -> Void)?
+    var toggleAppearance: (() -> Void)?
 
     private var cancellables = Set<AnyCancellable>()
     private var collapseWork: DispatchWorkItem?
@@ -59,7 +64,8 @@ final class PillViewModel: ObservableObject {
     init(audio: AudioOutputStore, hud: HUDStore, shelf: ShelfObservable,
          thermal: ThermalStore, battery: BatteryStore, timer: TimerStore,
          calendar: CalendarStore, privacy: PrivacyStore,
-         nowPlaying: NowPlayingStore, network: NetworkStore) {
+         nowPlaying: NowPlayingStore, network: NetworkStore,
+         bluetooth: BluetoothStore, actions: QuickActionsStore) {
         self.audio = audio
         self.hud = hud
         self.shelf = shelf
@@ -70,6 +76,8 @@ final class PillViewModel: ObservableObject {
         self.privacy = privacy
         self.nowPlaying = nowPlaying
         self.network = network
+        self.bluetooth = bluetooth
+        self.actions = actions
         self.size = Self.collapsedSize
 
         // Width is ours to choose; HEIGHT IS MEASURED, never computed.

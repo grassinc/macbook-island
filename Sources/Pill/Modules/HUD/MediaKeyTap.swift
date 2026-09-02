@@ -17,6 +17,9 @@ final class MediaKeyTap {
 
     /// Return `true` from this to consume the key; `false` passes it through.
     var onKey: ((MediaKey) -> Bool)?
+    /// Reports Caps Lock turning on and off. Never consumes the event.
+    var onCapsLock: ((Bool) -> Void)?
+    private var lastCapsLock = false
 
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
@@ -38,8 +41,10 @@ final class MediaKeyTap {
         guard Self.isTrusted else { return false }
 
         // NSEventTypeSystemDefined is 14; the media keys arrive as its
-        // aux-control subtype.
-        let mask = CGEventMask(1 << 14)
+        // aux-control subtype. flagsChanged is 12, which is where Caps Lock
+        // shows up — it rides this same tap rather than asking for a second
+        // permission, since Accessibility already covers both.
+        let mask = CGEventMask(1 << 14) | CGEventMask(1 << CGEventType.flagsChanged.rawValue)
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
             place: .headInsertEventTap,
@@ -73,6 +78,17 @@ final class MediaKeyTap {
         // silently losing the keys for the rest of the session.
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
+            return Unmanaged.passUnretained(event)
+        }
+
+        // Caps Lock is reported, never consumed. Swallowing a modifier would
+        // break the key everywhere else on the system.
+        if type == .flagsChanged {
+            let on = event.flags.contains(.maskAlphaShift)
+            if on != lastCapsLock {
+                lastCapsLock = on
+                onCapsLock?(on)
+            }
             return Unmanaged.passUnretained(event)
         }
 

@@ -22,6 +22,7 @@ final class BatteryModule: PillModule {
     private var context: ModuleContext?
     private var runLoopSource: CFRunLoopSource?
     private var wasLow = false
+    private var suggestedUnplug = false
 
     init(store: BatteryStore) { self.store = store }
 
@@ -54,6 +55,29 @@ final class BatteryModule: PillModule {
         store.batteries = BatteryReader.read()
         guard let mac = store.mac else { return }
         Log.activity.notice("battery \(mac.percent, privacy: .public)% charging=\(mac.isCharging, privacy: .public) accessories=\(self.store.accessories.count, privacy: .public)")
+
+        // Battery longevity on Apple silicon: a nudge at 80%, said once per
+        // charge session. This is advice, not automation -- actually holding the
+        // charge means writing to the SMC as root, which is not something this
+        // app should do to someone's hardware.
+        if ChargeAdvice.shouldResetAdvice(isCharging: mac.isCharging) { suggestedUnplug = false }
+        if ChargeAdvice.shouldSuggestUnplug(percent: mac.percent,
+                                            isCharging: mac.isCharging,
+                                            alreadySuggested: suggestedUnplug) {
+            suggestedUnplug = true
+            let now = Date()
+            Log.activity.notice("suggesting unplug at \(mac.percent, privacy: .public)%")
+            context?.publish(Activity(
+                id: "\(Self.identifier).unplug",
+                kind: .battery,
+                title: "\(mac.percent)% — unplug?",
+                subtitle: "Better for the battery",
+                priority: .transient,
+                startedAt: now,
+                expiresAt: now.addingTimeInterval(6),
+                progress: mac.level
+            ))
+        }
 
         // Announce only on the transition into low, not continuously. A warning
         // that is always present is furniture, and gets ignored.
