@@ -51,18 +51,6 @@ struct StatusRow: View {
                 .help(accessory.name)
             }
 
-            // Named so an automatically-applied profile is never a mystery.
-            if let profile = network.profile {
-                Label {
-                    Text(profile.name)
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                } icon: {
-                    Image(systemName: "wifi").font(.system(size: 10))
-                }
-                .foregroundStyle(.white.opacity(0.6))
-                .help("Network profile")
-            }
-
             // Only shown when it is actionable, so it never becomes furniture.
             if thermal.level.shouldWarn {
                 Label {

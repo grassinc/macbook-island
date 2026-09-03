@@ -124,41 +124,6 @@ bütün sistem məlumatları isə açıq API-lərdən oxunur.
 
 ---
 
-## Şəbəkəyə görə profillər
-
-Müəyyən bir Wi-Fi şəbəkəsinə qoşulanda pill özünü avtomatik tənzimləyə bilər —
-məsələn universitetdə ekran paylaşımı rejimini özü açsın.
-
-```bash
-cp profiles.example.json ~/Library/Application\ Support/Pill/profiles.json
-```
-
-| Sahə | Mənası |
-|---|---|
-| `name` | Paneldə göstərilən ad |
-| `ssid` | Şəbəkənin adı (Məkan icazəsi tələb edir) |
-| `gateway` | Router-in MAC ünvanı — **icazə tələb etmir** |
-| `screenShare` | Bu şəbəkədə ekran paylaşımı rejimini avtomatik aç |
-| `hideFromCapture` | Pill-i ekran yazısından tamamilə gizlət |
-
-**Niyə `gateway`?** macOS 14-dən sonra Wi-Fi adını (SSID) oxumaq üçün Məkan
-(Location Services) icazəsi lazımdır — bu maşında yoxlanılıb: `CWInterface.ssid()`
-`nil` qaytarır. Router-in MAC ünvanı isə icazəsiz oxunur, hər router üçün sabitdir
-və şəbəkəni eyni dərəcədə yaxşı tanıdır — özü də harada olduğunuzu bilmədən.
-
-MAC ünvanını tapmaq üçün:
-
-```bash
-arp -n $(route -n get default | awk '/gateway:/{print $2}')
-```
-
-Qısa və uzun yazılış (`0:9:f:...` və `00:09:0f:...`) eyni sayılır.
-
-Profil tətbiq olunanda geri qaytarılmır: şəbəkədən çıxanda sizin əlinizlə
-açdığınız rejim söndürülmür.
-
----
-
 ## Ekran yazısından gizlənmə
 
 Paneldəki **göz** işarəsinə klikləyəndə (qırmızı olanda) pill ekran yazısı və

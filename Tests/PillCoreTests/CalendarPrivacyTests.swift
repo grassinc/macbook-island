@@ -5,6 +5,22 @@ private let t0 = Date(timeIntervalSinceReferenceDate: 1_000_000)
 private func at(_ o: TimeInterval) -> Date { t0.addingTimeInterval(o) }
 
 func runCalendarPrivacyTests(_ r: TestRunner) {
+    r.test("CalendarPeek.isImminent") { t in
+        let now = Date()
+        t.expect(CalendarPeek.isImminent(now.addingTimeInterval(300), at: now),
+                 "five minutes away is imminent")
+        t.expect(CalendarPeek.isImminent(now.addingTimeInterval(30 * 60), at: now),
+                 "exactly at the window edge still counts")
+        // Without this bound the calendar held the collapsed pill all day and
+        // outranked whatever was playing.
+        t.expect(!CalendarPeek.isImminent(now.addingTimeInterval(6 * 3600), at: now),
+                 "six hours away is not imminent")
+        t.expect(CalendarPeek.isImminent(now.addingTimeInterval(-30), at: now),
+                 "just started is still worth showing")
+        t.expect(!CalendarPeek.isImminent(now.addingTimeInterval(-300), at: now),
+                 "five minutes past is done")
+    }
+
 
     // MARK: One-click join
 
