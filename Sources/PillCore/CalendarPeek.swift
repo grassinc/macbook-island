@@ -83,6 +83,17 @@ public enum CalendarPeek {
             .min { $0.startsAt < $1.startsAt }
     }
 
+    /// Whether an event is close enough to be worth the collapsed pill.
+    ///
+    /// Without this the calendar published a non-expiring `.info` activity the
+    /// moment any event existed, so a meeting six hours away permanently
+    /// outranked whatever was playing. Distance is what makes it interesting.
+    public static func isImminent(_ startsAt: Date, at now: Date,
+                                  within: TimeInterval = 30 * 60) -> Bool {
+        let delta = startsAt.timeIntervalSince(now)
+        return delta <= within && delta > -60
+    }
+
     /// Short, glanceable countdown.
     public static func countdown(to date: Date, from now: Date) -> String {
         let seconds = Int(date.timeIntervalSince(now))

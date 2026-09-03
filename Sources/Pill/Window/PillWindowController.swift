@@ -54,6 +54,7 @@ final class PillWindowController {
 
         observeSize()
         observeShelfHover()
+        observeScreenShare()
         observeScreenChanges()
         observePresentationForPointerTracking()
         observeUserDrags()
@@ -92,6 +93,25 @@ final class PillWindowController {
             .sink { [weak self] movable in
                 self?.panel.isMovableByWindowBackground = movable
                 Log.activity.debug("window drag \(movable ? "enabled" : "disabled", privacy: .public)")
+            }
+            .store(in: &cancellables)
+    }
+
+    /// Screen-share mode hides the pill from capture entirely.
+    ///
+    /// `sharingType = .none` excludes a window from screen recordings and
+    /// screenshots at the WindowServer level -- verified here by capturing a
+    /// test window with it on and off: with `.readOnly` the window is in the
+    /// image, with `.none` the capture shows straight through to what is behind
+    /// it. Redacting the text was never enough on its own; with the eye on, the
+    /// pill is simply not in the recording.
+    private func observeScreenShare() {
+        model.privacy.$mode
+            .map { $0 == .screenShare }
+            .removeDuplicates()
+            .sink { [weak self] hidden in
+                self?.panel.sharingType = hidden ? .none : .readOnly
+                Log.activity.notice("pill \(hidden ? "hidden from" : "visible to", privacy: .public) screen capture")
             }
             .store(in: &cancellables)
     }

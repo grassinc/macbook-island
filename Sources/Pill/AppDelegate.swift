@@ -118,6 +118,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.captureRegion = { [weak self] in self?.actionsModule.captureRegion() }
         model.toggleRecording = { [weak self] in self?.actionsModule.toggleRecording() }
         model.toggleAppearance = { [weak self] in self?.actionsModule.toggleDarkMode() }
+
+        // Joining a network with a profile applies it; leaving one does not undo
+        // a mode the user turned on by hand, which would be the app arguing with
+        // them about their own privacy setting.
+        networkModule.onProfileChange = { [weak self] profile in
+            guard let self, let profile else { return }
+            if profile.screenShare || profile.hideFromCapture {
+                self.privacyModule.setScreenShare(true)
+                Log.activity.notice("profile \(profile.name, privacy: .public) enabled screen-share mode")
+            }
+        }
         // The scrubber only needs to move while someone can see it.
         model.onPanelOpenChanged = { [weak self] open in self?.nowPlayingModule.setPanelOpen(open) }
     }

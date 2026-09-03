@@ -1,0 +1,14 @@
+[
+  {
+    "name": "Ev",
+    "ssid": "Ev-WiFi",
+    "screenShare": false,
+    "hideFromCapture": false
+  },
+  {
+    "name": "Universitet",
+    "gateway": "00:09:0f:09:01:1a",
+    "screenShare": true,
+    "hideFromCapture": true
+  }
+]

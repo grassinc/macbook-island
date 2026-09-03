@@ -59,6 +59,13 @@ final class PrivacyModule: PillModule {
         observer = nil
     }
 
+    /// Set explicitly, for network profiles. `toggle()` cannot express "on".
+    func setScreenShare(_ on: Bool) {
+        guard store.isScreenSharing != on else { return }
+        store.mode = on ? .screenShare : .normal
+        Log.activity.notice("screen-share mode = \(on, privacy: .public) (profile)")
+    }
+
     func toggle() {
         store.mode = store.isScreenSharing ? .normal : .screenShare
         Log.activity.notice("screen-share mode = \(self.store.isScreenSharing, privacy: .public)")

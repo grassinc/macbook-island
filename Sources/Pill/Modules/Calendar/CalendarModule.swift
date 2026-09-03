@@ -101,11 +101,14 @@ final class CalendarModule: PillModule {
         store.nextEvent = next
         store.countdown = next.map { CalendarPeek.countdown(to: $0.startsAt, from: now) } ?? ""
 
-        if let next {
+        // Published only while the event is near. The countdown goes in the
+        // title because the collapsed pill renders the title alone -- putting it
+        // in the subtitle meant the one number worth glancing at never showed.
+        if let next, CalendarPeek.isImminent(next.startsAt, at: now) {
             context?.publish(Activity(
                 id: Self.identifier,
                 kind: .calendar,
-                title: next.title,
+                title: "\(next.title) · \(store.countdown)",
                 subtitle: store.countdown,
                 priority: .info,
                 startedAt: now
